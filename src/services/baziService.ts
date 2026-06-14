@@ -231,17 +231,18 @@ function calculateMonthPillar(_year: number, month: number, day: number, yearPil
 
 /**
  * 计算日柱
- * 使用累积天数法（基准：1900年1月31日甲子日）
+ * 使用累积天数法（基准：1900年1月1日甲戌日，序数10）
  */
 function calculateDayPillar(year: number, month: number, day: number): Pillar {
-  // 基准日期：1900年1月31日是甲子日（序数0）
+  // 基准日期：1900年1月1日是甲戌日（序数10）
   // 计算从基准日期到目标日期的天数差
-  const baseDate = new Date(1900, 0, 31); // 1900年1月31日
+  const baseDate = new Date(1900, 0, 1); // 1900年1月1日
   const targetDate = new Date(year, month - 1, day);
   const daysDiff = Math.floor((targetDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  // 干支序数（60循环）
-  let ganZhiIndex = daysDiff % 60;
+  // 干支序数（60循环）- 加上基准序数10
+  const BASE_INDEX = 10; // 甲戌的干支序数
+  let ganZhiIndex = (daysDiff + BASE_INDEX) % 60;
   if (ganZhiIndex < 0) {
     ganZhiIndex += 60;
   }
