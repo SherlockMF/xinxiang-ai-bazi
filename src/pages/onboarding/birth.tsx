@@ -88,7 +88,8 @@ const BirthPage = () => {
           <View className="bg-gray-900 bg-opacity-50 rounded-xl px-4 py-3 mt-2">
             {/* MVP 版本：使用输入框，后续可改为 Picker */}
             <Input
-              className="w-full bg-transparent text-slate-100"
+              className="w-full bg-transparent text-cyan-400 placeholder-slate-500"
+              placeholderStyle="color: #64748b"
               placeholder="格式：1990-01-15"
               value={birthDate}
               onInput={(e) => setBirthDate(e.detail.value)}
@@ -104,7 +105,8 @@ const BirthPage = () => {
           <Label className="text-slate-300 mb-2">出生时间 *</Label>
           <View className="bg-gray-900 bg-opacity-50 rounded-xl px-4 py-3 mt-2">
             <Input
-              className="w-full bg-transparent text-slate-100"
+              className="w-full bg-transparent text-cyan-400 placeholder-slate-500"
+              placeholderStyle="color: #64748b"
               placeholder="格式：14:30"
               value={birthTime}
               onInput={(e) => setBirthTime(e.detail.value)}
@@ -150,7 +152,8 @@ const BirthPage = () => {
           <Label className="text-slate-300 mb-2">出生地（可选）</Label>
           <View className="bg-gray-900 bg-opacity-50 rounded-xl px-4 py-3 mt-2">
             <Input
-              className="w-full bg-transparent text-slate-100"
+              className="w-full bg-transparent text-cyan-400 placeholder-slate-500"
+              placeholderStyle="color: #64748b"
               placeholder="如：北京"
               value={birthPlace}
               onInput={(e) => setBirthPlace(e.detail.value)}
