@@ -1,7 +1,6 @@
 // 欢迎页 - 赛博灵频启动入口
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { Button } from '@/components/ui/button';
 import './index.css';
 
 const IndexPage = () => {
@@ -13,8 +12,8 @@ const IndexPage = () => {
 
   return (
     <View className="welcome-container min-h-screen bg-slate-900 flex flex-col justify-between items-center p-6">
-      {/* 背景渐变网格 */}
-      <View className="absolute inset-0 bg-gradient-cyber opacity-20" />
+      {/* 背景渐变网格 - pointerEvents-none 确保不阻挡点击 */}
+      <View className="absolute inset-0 bg-gradient-cyber opacity-20 pointer-events-none" />
       
       {/* 顶部装饰 */}
       <View className="w-full flex justify-center pt-8">
@@ -43,15 +42,16 @@ const IndexPage = () => {
 
       {/* 底部按钮和声明 */}
       <View className="w-full flex flex-col gap-6 mt-8 pb-8">
-        {/* 启动按钮 */}
-        <Button 
+        {/* 启动按钮 - 直接使用 View 组件 */}
+        <View 
           onClick={handleStartScan}
-          className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg text-white"
+          className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg flex items-center justify-center"
+          style={{ cursor: 'pointer' }}
         >
           <Text className="block text-lg font-medium text-white">
             启动灵频扫描
           </Text>
-        </Button>
+        </View>
 
         {/* 免责声明 */}
         <Text className="block text-xs text-slate-500 text-center leading-relaxed">
