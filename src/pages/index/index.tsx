@@ -42,11 +42,13 @@ const IndexPage = () => {
 
       {/* 底部按钮和声明 */}
       <View className="w-full flex flex-col gap-6 mt-8 pb-8">
-        {/* 启动按钮 - 直接使用 View 组件 */}
+        {/* 启动按钮 - 使用多种事件确保点击生效 */}
         <View 
           onClick={handleStartScan}
-          className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg flex items-center justify-center"
-          style={{ cursor: 'pointer' }}
+          onTap={handleStartScan}
+          onTouchEnd={handleStartScan}
+          className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg flex items-center justify-center active:opacity-80"
+          style={{ cursor: 'pointer', touchAction: 'manipulation' }}
         >
           <Text className="block text-lg font-medium text-white">
             启动灵频扫描
