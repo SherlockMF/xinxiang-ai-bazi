@@ -31,7 +31,7 @@ export class ChatController {
     }
 
     try {
-      const result = this.chatService.generateChatResponse({
+      const result = await this.chatService.generateChatResponse({
         userId,
         question,
         bazi,

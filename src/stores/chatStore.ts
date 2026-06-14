@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 import type { ChatMessage, BaziProfile, DailyFortune } from '../types';
 import { saveChatMessage, getChatHistory, clearChatHistory } from '../services/storageService';
-import { llmProvider } from '../services/llmProvider';
+import { Network } from '../network';
 import { getQuickQuestions } from '../services/llmPromptUtils';
 
 interface ChatState {
@@ -67,13 +67,46 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: m.content
       }));
       
-      // 调用 AI
-      const aiResponse = await llmProvider.chatWithContext(
-        content,
-        bazi as unknown as Record<string, unknown>,
-        (fortune || {}) as Record<string, unknown>,
-        history
-      );
+      // 调用后端 API
+      console.log('[ChatStore] 调用后端API:', { userId, question: content });
+      
+      const response = await Network.request({
+        url: '/api/chat/message',
+        method: 'POST',
+        data: {
+          userId,
+          question: content,
+          bazi: {
+            yearPillar: bazi.yearPillar,
+            monthPillar: bazi.monthPillar,
+            dayPillar: bazi.dayPillar,
+            hourPillar: bazi.hourPillar,
+            dayMaster: bazi.dayMaster,
+            favorableElements: bazi.favorableElements,
+            personalityTags: bazi.personalityTags,
+            summary: bazi.summary
+          },
+          fortune: fortune ? {
+            overallScore: fortune.overallScore,
+            moodKeyword: fortune.moodKeyword,
+            yi: fortune.yi,
+            ji: fortune.ji,
+            luckyColor: fortune.luckyColor,
+            actionSuggestion: fortune.actionSuggestion,
+            summary: fortune.summary
+          } : null,
+          history
+        }
+      });
+      
+      console.log('[ChatStore] API响应:', response);
+      
+      // 解析响应 - 注意双层 data 结构
+      const aiContent = response?.data?.data?.content || response?.data?.content;
+      
+      if (!aiContent) {
+        throw new Error('AI回复内容为空');
+      }
       
       // 创建 AI 消息
       const aiMessage: ChatMessage = {
@@ -81,7 +114,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         userId,
         dailyFortuneId: fortune?.id,
         role: 'assistant',
-        content: aiResponse,
+        content: aiContent,
         createdAt: new Date().toISOString()
       };
       
@@ -91,6 +124,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'AI 回复失败';
+      console.error('[ChatStore] 发送失败:', errorMsg);
       
       // 创建兜底回复
       const fallbackMessage: ChatMessage = {
@@ -98,7 +132,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         userId,
         dailyFortuneId: fortune?.id,
         role: 'assistant',
-        content: `我理解你的问题。基于你的命盘特点，我的建议是：保持觉知，顺应流，不要过度用力。记住，命运不是固定的剧本，你始终拥有选择的空间。这只是情绪陪伴，不是绝对的指导。`,
+        content: `我理解你的问题。基于你的命盘特点，我的建议是：保持觉知，顺应能量流动，不要过度用力。记住，命运不是固定的剧本，你始终拥有选择的空间。这只是情绪陪伴，不是绝对的指导。`,
         createdAt: new Date().toISOString()
       };
       
