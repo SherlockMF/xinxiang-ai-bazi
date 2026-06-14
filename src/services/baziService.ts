@@ -231,46 +231,28 @@ function calculateMonthPillar(_year: number, month: number, day: number, yearPil
 
 /**
  * 计算日柱
- * 使用干支纪日法
+ * 使用累积天数法（基准：1900年1月31日甲子日）
  */
 function calculateDayPillar(year: number, month: number, day: number): Pillar {
-  // 简化算法：使用公式计算
-  // G = 4C + [C/4] + 5y + [y/4] + [3*(M+1)/5] + d - 3
-  // Z = 8C + [C/4] + 5y + [y/4] + [3*(M+1)/5] + d + 7 + i
-  // 其中 C=世纪-1, y=年份后两位, M=月份, d=日期, i=0或6(奇偶月)
+  // 基准日期：1900年1月31日是甲子日（序数0）
+  // 计算从基准日期到目标日期的天数差
+  const baseDate = new Date(1900, 0, 31); // 1900年1月31日
+  const targetDate = new Date(year, month - 1, day);
+  const daysDiff = Math.floor((targetDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  const C = Math.floor(year / 100);
-  const y = year % 100;
-  const M = month;
-  const d = day;
-  const i = M % 2 === 0 ? 6 : 0;
-  
-  // 1月2月需特殊处理
-  let adjustedM = M;
-  let adjustedY = y;
-  let adjustedC = C;
-  if (M === 1 || M === 2) {
-    adjustedM = M + 12;
-    adjustedY = y - 1;
-    if (adjustedY < 0) {
-      adjustedY = 99;
-      adjustedC = C - 1;
-    }
+  // 干支序数（60循环）
+  let ganZhiIndex = daysDiff % 60;
+  if (ganZhiIndex < 0) {
+    ganZhiIndex += 60;
   }
   
-  const G = 4 * adjustedC + Math.floor(adjustedC / 4) + 5 * adjustedY + Math.floor(adjustedY / 4) + Math.floor(3 * (adjustedM + 1) / 5) + d - 3;
-  const Z = 8 * adjustedC + Math.floor(adjustedC / 4) + 5 * adjustedY + Math.floor(adjustedY / 4) + Math.floor(3 * (adjustedM + 1) / 5) + d + 7 + i;
-  
-  const stemIndex = G % 10;
-  const branchIndex = Z % 12;
-  
-  const stemIdx = stemIndex >= 0 ? stemIndex : stemIndex + 10;
-  const branchIdx = branchIndex >= 0 ? branchIndex : branchIndex + 12;
+  const stemIndex = ganZhiIndex % 10;
+  const branchIndex = ganZhiIndex % 12;
   
   return {
-    heavenlyStem: HEAVENLY_STEMS[stemIdx],
-    earthlyBranch: EARTHLY_BRANCHES[branchIdx],
-    fullPillar: `${HEAVENLY_STEMS[stemIdx]}${EARTHLY_BRANCHES[branchIdx]}`
+    heavenlyStem: HEAVENLY_STEMS[stemIndex],
+    earthlyBranch: EARTHLY_BRANCHES[branchIndex],
+    fullPillar: `${HEAVENLY_STEMS[stemIndex]}${EARTHLY_BRANCHES[branchIndex]}`
   };
 }
 
