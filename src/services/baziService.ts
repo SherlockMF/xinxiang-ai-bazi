@@ -236,8 +236,9 @@ function calculateMonthPillar(_year: number, month: number, day: number, yearPil
 function calculateDayPillar(year: number, month: number, day: number): Pillar {
   // 基准日期：1900年1月1日是甲戌日（序数10）
   // 计算从基准日期到目标日期的天数差
-  const baseDate = new Date(1900, 0, 1); // 1900年1月1日
-  const targetDate = new Date(year, month - 1, day);
+  // 使用 UTC 时间避免时区偏移问题
+  const baseDate = new Date(Date.UTC(1900, 0, 1)); // 1900年1月1日 UTC
+  const targetDate = new Date(Date.UTC(year, month - 1, day)); // 目标日期 UTC
   const daysDiff = Math.floor((targetDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
   
   // 干支序数（60循环）- 加上基准序数10
