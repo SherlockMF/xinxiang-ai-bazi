@@ -403,15 +403,21 @@ function generatePersonalityTags(
   const dayElement = getStemElement(dayMaster);
   const tags: string[] = [];
   
-  // 日主五行性格
-  tags.push(...ELEMENT_PERSONALITY[dayElement].slice(0, 2));
+  // 日主五行性格（添加安全检查）
+  const dayElementPersonality = ELEMENT_PERSONALITY[dayElement];
+  if (dayElementPersonality) {
+    tags.push(...dayElementPersonality.slice(0, 2));
+  }
   
   // 强势五行性格
   const sortedElements = Object.entries(fiveElements)
     .sort((a, b) => b[1] - a[1]) as [FiveElementType, number][];
   
-  if (sortedElements[0][0] !== dayElement && sortedElements[0][1] > 25) {
-    tags.push(...ELEMENT_PERSONALITY[sortedElements[0][0]].slice(0, 1));
+  if (sortedElements[0] && sortedElements[0][0] !== dayElement && sortedElements[0][1] > 25) {
+    const topElementPersonality = ELEMENT_PERSONALITY[sortedElements[0][0]];
+    if (topElementPersonality) {
+      tags.push(...topElementPersonality.slice(0, 1));
+    }
   }
   
   return tags.slice(0, 5);
