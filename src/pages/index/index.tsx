@@ -2,7 +2,6 @@
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores';
 import './index.css';
 
@@ -57,14 +56,15 @@ const IndexPage = () => {
       {/* 底部按钮和声明 */}
       <View className="w-full flex flex-col gap-6 mt-8 pb-8">
         {/* 启动按钮 */}
-        <Button
+        <View
           onClick={handleStartScan}
-          className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full border-0 shadow-lg shadow-cyan-500 shadow-opacity-30"
+          className="w-full h-12 flex items-center justify-center bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg"
+          style={{ cursor: 'pointer' }}
         >
           <Text className="block text-lg font-medium text-white">
             启动灵频扫描
           </Text>
-        </Button>
+        </View>
 
         {/* 免责声明 */}
         <Text className="block text-xs text-slate-500 text-center leading-relaxed">
