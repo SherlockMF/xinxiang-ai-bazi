@@ -33,8 +33,10 @@ const Input = React.forwardRef<React.ElementRef<typeof TaroInput>, InputProps>(
       >
         <TaroInput
           type={type}
-          className="w-full flex-1 bg-transparent text-sm text-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 selection:bg-selection selection:text-selection-foreground"
+          className={cn("w-full flex-1 bg-transparent text-sm text-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 selection:bg-selection selection:text-selection-foreground", className)}
+          style={props.style}
           placeholderClass="text-muted-foreground"
+          placeholderStyle={props.placeholderStyle}
           ref={ref}
           focus={autoFocus || focus}
           onFocus={(e) => {
