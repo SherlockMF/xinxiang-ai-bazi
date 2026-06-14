@@ -35,6 +35,50 @@ const ELEMENT_PERSONALITY: Record<string, string[]> = {
   water: ['智慧', '灵活', '深沉', '善于沟通', '洞察力强']
 };
 
+// 五虎遁月干表（按地支索引排列：子0到亥11）
+const MONTH_STEM_TABLE: Record<string, string[]> = {
+  '甲': ['丙', '丁', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙'],
+  '乙': ['戊', '己', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁'],
+  '丙': ['庚', '辛', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己'],
+  '丁': ['壬', '癸', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛'],
+  '戊': ['甲', '乙', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'],
+  '己': ['丙', '丁', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙'],
+  '庚': ['戊', '己', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁'],
+  '辛': ['庚', '辛', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己'],
+  '壬': ['壬', '癸', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛'],
+  '癸': ['甲', '乙', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+};
+
+// 五鼠遁时干表（按地支索引排列：子0到亥11）
+const HOUR_STEM_TABLE: Record<string, string[]> = {
+  '甲': ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙'],
+  '乙': ['丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁'],
+  '丙': ['戊', '己', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己'],
+  '丁': ['庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛'],
+  '戊': ['壬', '癸', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'],
+  '己': ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙'],
+  '庚': ['丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁'],
+  '辛': ['戊', '己', '庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己'],
+  '壬': ['庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛'],
+  '癸': ['壬', '癸', '甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+};
+
+// 节气月份对照（简化版）
+const SOLAR_MONTH_MAP = [
+  { month: 12, day: 7, branchIndex: 0 },  // 子月（大雪）
+  { month: 1, day: 6, branchIndex: 1 },    // 丑月（小寒）
+  { month: 2, day: 4, branchIndex: 2 },    // 寅月（立春）
+  { month: 3, day: 6, branchIndex: 3 },    // 卯月（惊蛰）
+  { month: 4, day: 5, branchIndex: 4 },    // 辰月（清明）
+  { month: 5, day: 6, branchIndex: 5 },    // 巳月（立夏）
+  { month: 6, day: 6, branchIndex: 6 },    // 午月（芒种）
+  { month: 7, day: 7, branchIndex: 7 },    // 未月（小暑）
+  { month: 8, day: 8, branchIndex: 8 },    // 申月（立秋）
+  { month: 9, day: 8, branchIndex: 9 },    // 酉月（白露）
+  { month: 10, day: 8, branchIndex: 10 },  // 戌月（寒露）
+  { month: 11, day: 7, branchIndex: 11 }   // 亥月（立冬）
+];
+
 interface Pillar {
   heavenlyStem: string;
   earthlyBranch: string;
@@ -56,10 +100,16 @@ interface BaziResult {
 @Injectable()
 export class BaziService {
   /**
-   * 计算年柱
+   * 计算年柱（考虑立春分界）
    */
-  private calculateYearPillar(year: number): Pillar {
-    const offset = (year - 4) % 60;
+  private calculateYearPillar(year: number, month: number, day: number): Pillar {
+    // 立春前用上一年
+    let actualYear = year;
+    if (month < 2 || (month === 2 && day < 4)) {
+      actualYear = year - 1;
+    }
+    
+    const offset = (actualYear - 4) % 60;
     const stemIndex = offset % 10;
     const branchIndex = offset % 12;
     const stem = HEAVENLY_STEMS[stemIndex];
@@ -68,42 +118,63 @@ export class BaziService {
   }
 
   /**
-   * 计算月柱
+   * 计算月柱（根据节气）
    */
-  private calculateMonthPillar(year: number, month: number, yearStem: string): Pillar {
-    const branchIndex = (month + 1) % 12;
+  private calculateMonthPillar(year: number, month: number, day: number, yearStem: string): Pillar {
+    // 确定月份地支（根据节气）
+    let branchIndex = 1; // 默认丑月
+    
+    for (const sm of SOLAR_MONTH_MAP) {
+      if (month > sm.month || (month === sm.month && day >= sm.day)) {
+        branchIndex = sm.branchIndex;
+      }
+    }
+    
     const branch = EARTHLY_BRANCHES[branchIndex];
-    const yearStemIndex = HEAVENLY_STEMS.indexOf(yearStem);
-    const stemBase = (yearStemIndex % 5) * 2;
-    const stemIndex = (stemBase + month - 1) % 10;
-    const stem = HEAVENLY_STEMS[stemIndex];
+    const stem = MONTH_STEM_TABLE[yearStem][branchIndex];
     return { heavenlyStem: stem, earthlyBranch: branch, fullPillar: `${stem}${branch}` };
   }
 
   /**
-   * 计算日柱
+   * 计算日柱（基准：1900年1月1日=甲戌日，序数10）
    */
   private calculateDayPillar(year: number, month: number, day: number): Pillar {
-    const baseDate = new Date(1900, 0, 1);
-    const targetDate = new Date(year, month - 1, day);
-    const daysDiff = Math.floor((targetDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
-    const stemIndex = (daysDiff + 10) % 10;
-    const branchIndex = (daysDiff + 12) % 12;
+    // 使用 UTC 时间避免时区问题
+    const baseDate = Date.UTC(1900, 0, 1);
+    const targetDate = Date.UTC(year, month - 1, day);
+    const daysDiff = Math.floor((targetDate - baseDate) / (1000 * 60 * 60 * 24));
+    
+    const BASE_INDEX = 10; // 甲戌的干支序数
+    const ganZhiIndex = (daysDiff + BASE_INDEX) % 60;
+    
+    const stemIndex = ganZhiIndex % 10;
+    const branchIndex = ganZhiIndex % 12;
     const stem = HEAVENLY_STEMS[stemIndex];
     const branch = EARTHLY_BRANCHES[branchIndex];
     return { heavenlyStem: stem, earthlyBranch: branch, fullPillar: `${stem}${branch}` };
   }
 
   /**
-   * 计算时柱
+   * 计算时柱（根据日干和时辰）
    */
   private calculateHourPillar(dayStem: string, hour: number): Pillar {
-    const branchIndex = Math.floor((hour + 1) / 2) % 12;
+    // 时辰索引：子时(23-1)=0, 丑时(1-3)=1, 寅时(3-5)=2, 卯时(5-7)=3...
+    let branchIndex: number;
+    if (hour >= 23 || hour < 1) branchIndex = 0;      // 子时
+    else if (hour >= 1 && hour < 3) branchIndex = 1;  // 丑时
+    else if (hour >= 3 && hour < 5) branchIndex = 2;  // 寅时
+    else if (hour >= 5 && hour < 7) branchIndex = 3;  // 卯时
+    else if (hour >= 7 && hour < 9) branchIndex = 4;  // 辰时
+    else if (hour >= 9 && hour < 11) branchIndex = 5; // 巳时
+    else if (hour >= 11 && hour < 13) branchIndex = 6; // 午时
+    else if (hour >= 13 && hour < 15) branchIndex = 7; // 未时
+    else if (hour >= 15 && hour < 17) branchIndex = 8; // 申时
+    else if (hour >= 17 && hour < 19) branchIndex = 9; // 酉时
+    else if (hour >= 19 && hour < 21) branchIndex = 10; // 戌时
+    else branchIndex = 11; // 亥时
+    
     const branch = EARTHLY_BRANCHES[branchIndex];
-    const dayStemIndex = HEAVENLY_STEMS.indexOf(dayStem);
-    const stemBase = (dayStemIndex % 5) * 2;
-    const stemIndex = (stemBase + Math.floor(hour / 2)) % 10;
-    const stem = HEAVENLY_STEMS[stemIndex];
+    const stem = HOUR_STEM_TABLE[dayStem][branchIndex];
     return { heavenlyStem: stem, earthlyBranch: branch, fullPillar: `${stem}${branch}` };
   }
 
@@ -152,7 +223,7 @@ export class BaziService {
    */
   private generatePersonalityTags(dayMaster: string, fiveElements: Record<string, number>): string[] {
     const dayMasterElement = STEM_TO_ELEMENT[dayMaster];
-    const baseTags = ELEMENT_PERSONALITY[dayMasterElement];
+    const baseTags = ELEMENT_PERSONALITY[dayMasterElement] || [];
     const sortedElements = Object.entries(fiveElements)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
@@ -160,7 +231,8 @@ export class BaziService {
     const additionalTags: string[] = [];
     sortedElements.forEach(element => {
       if (element !== dayMasterElement) {
-        additionalTags.push(ELEMENT_PERSONALITY[element][0]);
+        const tags = ELEMENT_PERSONALITY[element] || [];
+        additionalTags.push(tags[0]);
       }
     });
     return [...baseTags.slice(0, 3), ...additionalTags];
@@ -174,10 +246,11 @@ export class BaziService {
       wood: '木', fire: '火', earth: '土', metal: '金', water: '水'
     };
     const dayMasterElement = STEM_TO_ELEMENT[dayMaster];
-    const energy = fiveElements[dayMasterElement];
+    const energy = fiveElements[dayMasterElement] || 20;
     let energyDesc = energy > 30 ? '能量充沛' : energy > 20 ? '能量平衡' : '能量偏弱';
-    const topElement = Object.entries(fiveElements).sort((a, b) => b[1] - a[1])[0][0];
-    return `你的日主为${dayMaster}，属${elementNames[dayMasterElement]}，${energyDesc}。命盘中${elementNames[topElement]}气最旺，赋予你"${personalityTags[0]}"的特质。整体命盘呈现"${personalityTags.slice(0, 2).join('、')}"的性格倾向。`;
+    const sorted = Object.entries(fiveElements).sort((a, b) => b[1] - a[1]);
+    const topElement = sorted[0]?.[0] || 'water';
+    return `你的日主为${dayMaster}，属${elementNames[dayMasterElement]}，${energyDesc}。命盘中${elementNames[topElement]}气最旺，赋予你"${personalityTags[0] || '智慧'}"的特质。整体命盘呈现"${personalityTags.slice(0, 2).join('、')}"的性格倾向。`;
   }
 
   /**
@@ -190,8 +263,8 @@ export class BaziService {
     const day = date.getDate();
     const hour = parseInt(birthTime.split(':')[0], 10);
 
-    const yearPillar = this.calculateYearPillar(year);
-    const monthPillar = this.calculateMonthPillar(year, month, yearPillar.heavenlyStem);
+    const yearPillar = this.calculateYearPillar(year, month, day);
+    const monthPillar = this.calculateMonthPillar(year, month, day, yearPillar.heavenlyStem);
     const dayPillar = this.calculateDayPillar(year, month, day);
     const hourPillar = this.calculateHourPillar(dayPillar.heavenlyStem, hour);
 
@@ -200,6 +273,14 @@ export class BaziService {
     const favorableElements = this.calculateFavorableElements(dayMaster, fiveElements);
     const personalityTags = this.generatePersonalityTags(dayMaster, fiveElements);
     const summary = this.generateSummary(dayMaster, fiveElements, personalityTags);
+
+    console.log('[BaziService] 四柱计算结果:', {
+      birthDate, birthTime, year, month, day, hour,
+      yearPillar: yearPillar.fullPillar,
+      monthPillar: monthPillar.fullPillar,
+      dayPillar: dayPillar.fullPillar,
+      hourPillar: hourPillar.fullPillar
+    });
 
     return {
       yearPillar: yearPillar.fullPillar,
