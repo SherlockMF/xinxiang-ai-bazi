@@ -16,7 +16,7 @@ export class ChatController {
 
   @Post('message')
   @HttpCode(HttpStatus.OK)
-  chatMessage(@Body() body: ChatDto) {
+  async chatMessage(@Body() body: ChatDto) {
     console.log('[ChatController] 接收到AI对话请求:', body);
     
     const { userId, question, bazi, fortune, history } = body;
