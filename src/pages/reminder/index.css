@@ -1,0 +1,11 @@
+.reminder-container {
+  position: relative;
+}
+
+.time-option {
+  transition: all 0.2s ease;
+}
+
+.time-option:active {
+  transform: scale(0.95);
+}

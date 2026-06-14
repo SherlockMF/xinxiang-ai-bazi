@@ -1,0 +1,11 @@
+.me-container {
+  position: relative;
+}
+
+.menu-item {
+  transition: background-color 0.2s ease;
+}
+
+.menu-item:active {
+  background-color: rgba(34, 211, 238, 0.1);
+}

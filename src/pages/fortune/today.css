@@ -1,0 +1,16 @@
+.today-container {
+  position: relative;
+}
+
+.score-ring {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.5);
+  }
+}

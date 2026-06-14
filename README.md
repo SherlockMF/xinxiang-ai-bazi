@@ -1,51 +1,93 @@
-# Coze Mini Program
+# 赛博灵频 (CyberSpirit)
 
-这是一个基于 [Taro 4](https://docs.taro.zone/docs/) + [Nest.js](https://nestjs.com/) 的前后端分离项目，由扣子编程 CLI 创建。
+一个面向泛玄学兴趣用户的东方玄学科技感小程序。用户输入出生信息后，系统生成八字档案，并每天根据八字档案生成个性化每日运势、情绪陪伴建议、今日宜忌、幸运元素和赛博风格祝福语。
+
+产品定位不是严肃预测，而是"情绪陪伴 + 每日仪式感 + 个性化建议"。所有内容明确仅供娱乐、情绪陪伴和自我觉察使用，不给出绝对化、恐吓式或高风险决策建议。
 
 ## 技术栈
 
-- **整体框架**: Taro 4.1.9
+- **整体框架**: Taro 4.1.9（支持微信小程序、抖音小程序、H5）
 - **语言**: TypeScript 5.4.5
 - **渲染**: React 18.0.0
-- **样式**: TailwindCSS 4.1.18
+- **样式**: TailwindCSS 4.1.18 + CSS Modules（赛博东方风格）
 - **Tailwind 适配层**: weapp-tailwindcss 4.9.2
 - **状态管理**: Zustand 5.0.9
-- **图标库**: lucide-react-taro latest
+- **图标库**: lucide-react-taro
 - **工程化**: Vite 4.2.0
 - **包管理**: pnpm
 - **运行时**: Node.js >= 18
 - **服务端**: NestJS 10.4.15
-- **数据库 ORM**: Drizzle ORM 0.45.1
+- **数据库 ORM**: Drizzle ORM 0.45.1（预留 Supabase/PostgreSQL 接入）
 - **类型校验**: Zod 4.3.5
 
 ## 项目结构
 
 ```
 ├── .cozeproj/                # Coze 平台配置
-│   └── scripts/              # 构建和运行脚本
 ├── config/                   # Taro 构建配置
-│   ├── index.ts              # 主配置文件
-│   ├── dev.ts                # 开发环境配置
-│   └── prod.ts               # 生产环境配置
 ├── server/                   # NestJS 后端服务
 │   └── src/
-│       ├── main.ts           # 服务入口
-│       ├── app.module.ts     # 根模块
-│       ├── app.controller.ts # 应用控制器
-│       └── app.service.ts    # 应用服务
+│       ├── bazi/             # 八字生成模块
+│       ├── fortune/          # 运势生成模块
+│       └── chat/             # AI 对话模块
 ├── src/                      # 前端源码
 │   ├── pages/                # 页面组件
-│   ├── presets/              # 框架预置逻辑（无需读取，如无必要不改动）
-│   ├── utils/                # 工具函数
-│   ├── network.ts            # 封装好的网络请求工具
-│   ├── app.ts                # 应用入口
-│   ├── app.config.ts         # 应用配置
-│   └── app.css               # 全局样式
-├── types/                    # TypeScript 类型定义
-├── key/                      # 小程序密钥（CI 上传用）
-├── .env.local                # 环境变量
-└── project.config.json       # 微信小程序项目配置
+│   │   ├── index/            # 欢迎页（赛博东方视觉）
+│   │   ├── onboarding/       # 出生信息输入页
+│   │   ├── profile/          # 八字档案展示页
+│   │   ├── fortune/          # 今日运势页（核心页面）
+│   │   ├── chat/             # AI 追问对话页
+│   │   ├── favorites/        # 收藏页
+│   │   ├── reminder/         # 提醒设置页
+│   │   └── me/               # 个人中心页
+│   ├── services/             # 业务服务层
+│   │   ├── baziService.ts    # 八字计算逻辑
+│   │   ├── fortuneService.ts # 运势生成逻辑
+│   │   ├── llmProvider.ts    # AI 调用封装（可替换）
+│   │   ├── reminderService.ts# 提醒逻辑
+│   │   └── storageService.ts # 本地存储服务
+│   ├── stores/               # Zustand 状态管理
+│   │   ├── userStore.ts      # 用户档案状态
+│   │   ├── fortuneStore.ts   # 运势数据状态
+│   │   ├── chatStore.ts      # 对话消息状态
+│   │   └── reminderStore.ts  # 提醒偏好状态
+│   ├── types/                # TypeScript 类型定义
+│   │   └── index.ts          # 核心数据结构
+│   ├── components/ui/        # shadcn/ui 组件库
+│   ├── network.ts            # 网络请求封装
+│   └── app.config.ts         # 应用配置（TabBar、路由）
+├── DESIGN.md                 # 赛博东方设计指南
+└── project.config.json       # 微信小程序配置
 ```
+
+## 核心功能
+
+### 前端页面（9个）
+
+1. **欢迎页** - 赛博东方视觉风格，启动按钮
+2. **出生信息页** - 日期/时间输入，隐私声明勾选
+3. **八字档案页** - 四柱展示，五行能量条，性格标签
+4. **今日运势页** - 综合分数，宜忌列表，幸运元素，AI 解读
+5. **宜忌解释弹窗** - AI 温柔解释每条宜忌
+6. **AI 追问页** - 结合八字运势的对话
+7. **收藏页** - 收藏建议/祝福/宜忌解释
+8. **提醒设置页** - 每日提醒时间设置
+9. **我的页面** - 入口导航，数据清除
+
+### 后端接口（3个）
+
+- `POST /api/bazi/generate` - 八字档案生成
+- `POST /api/fortune/generate` - 每日运势生成
+- `POST /api/chat/message` - AI 对话消息
+
+## 数据结构
+
+- `UserProfile` - 用户档案
+- `BaziProfile` - 八字档案（四柱、五行、性格标签）
+- `DailyFortune` - 每日运势（分数、宜忌、幸运元素）
+- `FavoriteAdvice` - 收藏建议
+- `ReminderPreference` - 提醒偏好
+- `ChatMessage` - 对话消息
 
 ## 快速开始
 
