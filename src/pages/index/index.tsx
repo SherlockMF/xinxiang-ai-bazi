@@ -1,26 +1,14 @@
 // 欢迎页 - 赛博灵频启动入口
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { useEffect } from 'react';
-import { useUserStore } from '@/stores';
+import { Button } from '@/components/ui/button';
 import './index.css';
 
 const IndexPage = () => {
-  const { userProfile, baziProfile, loadUserProfile } = useUserStore();
-
-  useEffect(() => {
-    // 加载用户档案
-    loadUserProfile();
-  }, [loadUserProfile]);
-
   const handleStartScan = () => {
-    // 如果已有用户档案，直接跳转到八字档案页
-    if (userProfile && baziProfile) {
-      Taro.redirectTo({ url: '/pages/profile/bazi' });
-    } else {
-      // 否则跳转到出生信息页
-      Taro.navigateTo({ url: '/pages/onboarding/birth' });
-    }
+    console.log('[欢迎页] 按钮点击触发');
+    // 直接跳转到出生信息页
+    Taro.navigateTo({ url: '/pages/onboarding/birth' });
   };
 
   return (
@@ -56,15 +44,14 @@ const IndexPage = () => {
       {/* 底部按钮和声明 */}
       <View className="w-full flex flex-col gap-6 mt-8 pb-8">
         {/* 启动按钮 */}
-        <View
+        <Button 
           onClick={handleStartScan}
-          className="w-full h-12 flex items-center justify-center bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg"
-          style={{ cursor: 'pointer' }}
+          className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg text-white"
         >
           <Text className="block text-lg font-medium text-white">
             启动灵频扫描
           </Text>
-        </View>
+        </Button>
 
         {/* 免责声明 */}
         <Text className="block text-xs text-slate-500 text-center leading-relaxed">
