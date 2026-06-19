@@ -76,7 +76,8 @@
 
 ### 后端接口（3个）
 
-- `POST /api/bazi/generate` - 八字档案生成
+- `POST /api/bazi/generate` - 八字档案生成（当前前端走本地算法，此接口为备用）
+- `POST /api/bazi/analyze` - AI 深度命理分析（接入 LLM，基于前端已排四柱）
 - `POST /api/fortune/generate` - 每日运势生成
 - `POST /api/chat/message` - AI 对话消息
 
@@ -88,6 +89,42 @@
 - `FavoriteAdvice` - 收藏建议
 - `ReminderPreference` - 提醒偏好
 - `ChatMessage` - 对话消息
+
+## 实现状态
+
+### 已实现
+
+- 出生信息录入与八字四柱排盘（年/月/日/时柱、日主、五行能量、喜用神、性格标签、命盘摘要）
+- 五行喜用神内部统一使用英文枚举（`wood/fire/earth/metal/water`），页面展示时通过 `ELEMENT_LABELS` 转中文
+- 每日运势本地算法生成（综合分数、宜忌、幸运色/数字/方向、行动建议、赛博祝福语），按 `userId+date` 缓存
+- 「重新生成」支持 `force` 跳过缓存并覆盖当天运势
+- 宜忌点击查看温柔解释（本地模板）
+- AI 追问对话：前端经 `Network` 调用 NestJS `/api/chat/message`，后端接入 LLM 并带兜底回复
+- AI 深度命理分析：八字档案页内嵌可展开卡片，调用 `/api/bazi/analyze`，后端以 `skills/bazi` 的分析框架为 system prompt（见 `server/src/bazi/bazi-analysis.prompt.ts`），生成日主旺衰/十神/格局/大运流年/综合建议，本地缓存并支持重新生成
+- 收藏、提醒偏好、对话历史本地持久化（统一经 `storageAdapter` 封装 Taro 同步存储）
+- tabBar 四个主页面（今日 / 追问 / 收藏 / 我的）
+- 冷启动 / 刷新后自动从本地恢复用户与八字档案
+- 本地数据一键清除
+- 隐私说明：明确告知 AI 追问会上传八字摘要、今日运势与对话内容
+
+### 未实现 / 后续计划
+
+- 农历输入与节气精确排盘（当前为公历近似、立春/节气按固定日期估算）
+- 精确的大运起运/流年（当前由 AI 近似推演，未做精确节气与真太阳时计算）
+- 神煞、纳音等更多进阶命理维度
+- 运势 / 对话 / 分析接入真实云端持久化（当前仅本地存储，预留 Drizzle/Supabase）
+- 提醒的真实推送（微信 / 抖音订阅消息），当前仅保存偏好、不发送系统通知
+- 出生日期 / 时间的 Picker 选择（当前为文本输入）
+- chat API 的脱敏摘要模式（可选只上传非敏感摘要）
+
+### 已知问题 / 注意事项
+
+- 八字排盘为简化算法，年柱以 2/4、月柱以固定节气日期近似，未做真太阳时校正，仅供娱乐参考
+- AI 深度分析中的大运/流年基于公历近似四柱推演，结果页已标注「近似、仅供娱乐」
+- `skills/bazi/` 的分析框架已以代码内 system prompt 形式接入后端（未在运行时读取 skill 文件，便于部署）；若更新 SKILL.md 需同步 `server/src/bazi/bazi-analysis.prompt.ts`
+- 本地存储数据结构升级后无迁移逻辑：早期版本若存过中文 `favorableElements`，建议在「我的 - 清除本地数据」后重新生成
+- 后端 LLM 依赖 `coze-coding-dev-sdk` 的运行环境配置，缺失时会走兜底回复
+- 内容定位为情绪陪伴与娱乐，不构成任何现实决策建议
 
 ## 快速开始
 

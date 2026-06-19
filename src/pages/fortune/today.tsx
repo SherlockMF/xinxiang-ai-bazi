@@ -12,7 +12,7 @@ import type { FavoriteAdvice } from '@/types';
 import './today.css';
 
 const TodayPage = () => {
-  const { baziProfile } = useUserStore();
+  const { baziProfile, loadUserProfile } = useUserStore();
   const { todayFortune, currentExplanation, explanationLoading, generateTodayFortune, getYiJiExplanation, isLoading } = useFortuneStore();
   
   // 当前日期
@@ -21,6 +21,11 @@ const TodayPage = () => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   });
   
+  // 页面进入时从本地恢复档案（防止刷新后状态丢失）
+  useEffect(() => {
+    loadUserProfile();
+  }, [loadUserProfile]);
+
   // 加载今日运势
   useEffect(() => {
     if (baziProfile) {
@@ -52,10 +57,11 @@ const TodayPage = () => {
     Taro.showToast({ title: '已收藏', icon: 'success' });
   };
 
-  // 重新生成
+  // 重新生成（跳过缓存，强制覆盖当天运势）
   const handleRegenerate = async () => {
-    if (!baziProfile) return;
-    await generateTodayFortune(baziProfile, currentDate);
+    if (!baziProfile || isLoading) return;
+    await generateTodayFortune(baziProfile, currentDate, true);
+    Taro.showToast({ title: '已重新生成', icon: 'success' });
   };
 
   // AI 解读

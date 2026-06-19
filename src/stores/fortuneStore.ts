@@ -23,8 +23,8 @@ interface FortuneState {
   // Actions
   // 加载今日运势
   loadTodayFortune: (userId: string, date: string) => void;
-  // 生成今日运势
-  generateTodayFortune: (bazi: BaziProfile, date: string) => Promise<DailyFortune>;
+  // 生成今日运势（force=true 跳过缓存强制重新生成）
+  generateTodayFortune: (bazi: BaziProfile, date: string, force?: boolean) => Promise<DailyFortune>;
   // 设置今日运势
   setTodayFortune: (fortune: DailyFortune) => void;
   // 获取宜忌解释
@@ -58,11 +58,11 @@ export const useFortuneStore = create<FortuneState>((set) => ({
     set({ todayFortune: fortune });
   },
   
-  generateTodayFortune: async (bazi: BaziProfile, date: string): Promise<DailyFortune> => {
+  generateTodayFortune: async (bazi: BaziProfile, date: string, force = false): Promise<DailyFortune> => {
     set({ isLoading: true, error: null });
-    
+
     try {
-      const fortune = await generateDailyFortune(bazi, date);
+      const fortune = await generateDailyFortune(bazi, date, force);
       saveDailyFortune(fortune);
       set({ todayFortune: fortune, isLoading: false });
       return fortune;

@@ -2,6 +2,7 @@
 // 管理每日运势提醒偏好
 
 import type { ReminderPreference } from '../types';
+import { storage } from './storageAdapter';
 
 // 本地存储 key
 const REMINDER_KEY = 'cyber_reminder_preference';
@@ -22,7 +23,7 @@ const DEFAULT_REMINDER: ReminderPreference = {
  */
 export function getReminderPreference(userId: string): ReminderPreference {
   try {
-    const stored = localStorage.getItem(REMINDER_KEY);
+    const stored = storage.getItem(REMINDER_KEY);
     if (!stored) {
       const defaultReminder = { ...DEFAULT_REMINDER, userId };
       return defaultReminder;
@@ -41,7 +42,7 @@ export function getReminderPreference(userId: string): ReminderPreference {
 export function saveReminderPreference(preference: ReminderPreference): void {
   try {
     preference.updatedAt = new Date().toISOString();
-    localStorage.setItem(REMINDER_KEY, JSON.stringify(preference));
+    storage.setItem(REMINDER_KEY, JSON.stringify(preference));
   } catch {
     console.error('保存提醒偏好失败');
   }
@@ -78,16 +79,17 @@ export function updateReminderChannel(userId: string, channel: 'in_app' | 'wecha
 }
 
 /**
- * 检查是否需要发送提醒（MVP 版本：仅返回配置）
- * TODO: 实现真实的提醒触发逻辑
+ * 检查是否需要发送提醒
+ * 当前版本仅保存提醒偏好、不发送系统通知，因此恒返回 needSend=false。
+ * 后续接入微信/抖音订阅消息后，可在此判断是否到达提醒时间并触发推送。
  */
 export function checkReminderNeed(userId: string): {
   needSend: boolean;
   preference: ReminderPreference;
 } {
   const preference = getReminderPreference(userId);
-  
-  // MVP 版本：不实际发送提醒
+
+  // 当前版本：不实际发送提醒
   return {
     needSend: false,
     preference
@@ -95,15 +97,16 @@ export function checkReminderNeed(userId: string): {
 }
 
 /**
- * 发送微信订阅消息（预留接口）
- * TODO: 接入微信订阅消息 API
+ * 发送订阅消息（预留扩展点）
+ * 后续可在此接入微信 / 抖音订阅消息 API。
+ * 当前版本不发送任何通知，直接返回 false。
  */
-export async function sendWechatSubscribeMessage(userId: string, fortuneSummary: string): Promise<boolean> {
-  console.log('[reminderService] 预留：发送微信订阅消息');
-  console.log('[reminderService] userId:', userId);
-  console.log('[reminderService] fortuneSummary:', fortuneSummary);
-  
-  // MVP 版本：返回 false，表示未实际发送
+export async function sendSubscribeMessage(
+  _userId: string,
+  _fortuneSummary: string,
+  _channel: 'wechat_subscribe' | 'douyin_subscribe' = 'wechat_subscribe'
+): Promise<boolean> {
+  // TODO: 接入微信 / 抖音订阅消息 API（注意不要在日志中打印运势正文等敏感内容）
   return false;
 }
 

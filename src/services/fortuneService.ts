@@ -1,8 +1,10 @@
 // 每日运势生成服务 - fortuneService
 // 根据八字档案生成个性化每日运势
 
-import type { BaziProfile, DailyFortune } from '../types';
+import type { BaziProfile, DailyFortune, FiveElementType } from '../types';
+import { getElementLabel } from '../types';
 import { generateCyberBlessing } from './llmPromptUtils';
+import { storage } from './storageAdapter';
 
 // 本地存储 key
 const FORTUNE_CACHE_KEY = 'cyber_fortune_cache';
@@ -60,7 +62,7 @@ const MOOD_KEYWORDS: string[] = [
  */
 export function getCachedFortune(userId: string, date: string): DailyFortune | null {
   try {
-    const cache = localStorage.getItem(FORTUNE_CACHE_KEY);
+    const cache = storage.getItem(FORTUNE_CACHE_KEY);
     if (!cache) return null;
     
     const parsed = JSON.parse(cache);
@@ -76,11 +78,11 @@ export function getCachedFortune(userId: string, date: string): DailyFortune | n
  */
 export function cacheFortune(fortune: DailyFortune): void {
   try {
-    const cache = localStorage.getItem(FORTUNE_CACHE_KEY) || '{}';
+    const cache = storage.getItem(FORTUNE_CACHE_KEY) || '{}';
     const parsed = JSON.parse(cache);
     const key = `${fortune.userId}_${fortune.date}`;
     parsed[key] = fortune;
-    localStorage.setItem(FORTUNE_CACHE_KEY, JSON.stringify(parsed));
+    storage.setItem(FORTUNE_CACHE_KEY, JSON.stringify(parsed));
   } catch {
     // 缓存失败不影响主流程
   }
@@ -116,7 +118,7 @@ function generateJi(bazi: BaziProfile): string[] {
   const ji: string[] = [];
   
   // 找相反的五行
-  const elements: string[] = ['wood', 'fire', 'earth', 'metal', 'water'];
+  const elements: FiveElementType[] = ['wood', 'fire', 'earth', 'metal', 'water'];
   const unfavorable = elements.filter(e => !favorable.includes(e)).slice(0, 2);
   
   unfavorable.forEach(element => {
@@ -237,14 +239,17 @@ function generateActionSuggestion(bazi: BaziProfile): string {
 /**
  * 生成每日运势
  * MVP 版本：使用本地算法 + 模板生成，后续接入 LLM
+ * @param force 为 true 时跳过缓存，强制重新生成并覆盖当天缓存（用于"重新生成"按钮）
  */
-export async function generateDailyFortune(bazi: BaziProfile, date: string): Promise<DailyFortune> {
-  // 先检查缓存
-  const cached = getCachedFortune(bazi.userId, date);
-  if (cached) {
-    return cached;
+export async function generateDailyFortune(bazi: BaziProfile, date: string, force = false): Promise<DailyFortune> {
+  // 默认读取缓存；force=true 时跳过缓存
+  if (!force) {
+    const cached = getCachedFortune(bazi.userId, date);
+    if (cached) {
+      return cached;
+    }
   }
-  
+
   const score = generateOverallScore(bazi);
   const yi = generateYi(bazi);
   const ji = generateJi(bazi);
@@ -282,15 +287,17 @@ export async function explainYiJi(
   type: 'yi' | 'ji'
 ): Promise<string> {
   // MVP 版本：使用模板解释
+  // 喜用五行为英文枚举，展示时转为中文 label
+  const favorableLabel = bazi.favorableElements[0] ? getElementLabel(bazi.favorableElements[0]) : '水';
   const templates: Record<string, string[]> = {
     yi: [
-      `"${item}"与你的${bazi.favorableElements[0]}气相和。今天做这件事时，你会感受到能量的自然流动，不需要刻意用力。保持轻松的心态，让这件事成为你今日的能量补给站。`,
+      `"${item}"与你的${favorableLabel}气相和。今天做这件事时，你会感受到能量的自然流动，不需要刻意用力。保持轻松的心态，让这件事成为你今日的能量补给站。`,
       `你的日主${bazi.dayMaster}今天与"${item}"的能量频率共振。这不是硬性要求，而是顺势而为的温柔提示。如果你今天有这方面的计划，现在是个不错的时机。`,
       `"${item}"能帮助你今日的能量状态更加平衡。不需要追求完美结果，过程中的感受才是真正有价值的部分。给自己一点时间，慢慢体验。`
     ],
     ji: [
       `"${item}"可能会消耗你今日的能量储备。这不是说这件事绝对不能做，而是提醒你：如果必须做，请给自己多一点缓冲空间，不要勉强。`,
-      `今天你的${bazi.favorableElements[0]}气不太适合"${item}"。如果这件事出现在你的计划中，可以试着换个角度，或者推迟到能量更充沛的时候。`,
+      `今天你的${favorableLabel}气不太适合"${item}"。如果这件事出现在你的计划中，可以试着换个角度，或者推迟到能量更充沛的时候。`,
       `"${item}"与今日的能量流向有些冲突。如果你发现自己在这件事上遇到阻力，不必焦虑。这只是能量的自然调节，休息一下，换个方式试试。`
     ]
   };

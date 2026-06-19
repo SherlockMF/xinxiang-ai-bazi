@@ -10,7 +10,7 @@ dist-*/
 # Misc
 .DS_Store
 .env
-# .env.local
+.env.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -36,8 +36,8 @@ pnpm-debug.log*
 # OS X
 .DS_Store
 
-# Key
-# key/
+# Key（小程序 AppID 私钥等敏感凭证，不应提交）
+key/
 
 # Preview files
 .preview

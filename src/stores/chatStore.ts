@@ -3,6 +3,7 @@
 
 import { create } from 'zustand';
 import type { ChatMessage, BaziProfile, DailyFortune } from '../types';
+import { getElementLabel } from '../types';
 import { saveChatMessage, getChatHistory, clearChatHistory } from '../services/storageService';
 import { Network } from '../network';
 import { getQuickQuestions } from '../services/llmPromptUtils';
@@ -67,9 +68,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: m.content
       }));
       
-      // 调用后端 API
-      console.log('[ChatStore] 调用后端API:', { userId, question: content });
-      
+      // 调用后端 API（隐私：不打印问题正文）
+      console.log('[ChatStore] 调用后端API:', { questionLength: content.length });
+
       const response = await Network.request({
         url: '/api/chat/message',
         method: 'POST',
@@ -82,7 +83,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             dayPillar: bazi.dayPillar,
             hourPillar: bazi.hourPillar,
             dayMaster: bazi.dayMaster,
-            favorableElements: bazi.favorableElements,
+            // 内部为英文枚举，发送给服务端/LLM 时转为中文 label，便于生成可读回复
+            favorableElements: bazi.favorableElements.map(getElementLabel),
             personalityTags: bazi.personalityTags,
             summary: bazi.summary
           },
@@ -98,8 +100,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           history
         }
       });
-      
-      console.log('[ChatStore] API响应:', response);
       
       // 解析响应 - 注意双层 data 结构
       const aiContent = response?.data?.data?.content || response?.data?.content;

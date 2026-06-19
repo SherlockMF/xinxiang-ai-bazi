@@ -104,8 +104,13 @@ ${question}`;
 
     messages.push({ role: 'user', content: userMessage });
 
-    console.log('[ChatService] 调用LLM，问题:', question);
-    console.log('[ChatService] 上下文:', { bazi: bazi?.dayMaster, fortune: fortune?.overallScore });
+    // 隐私：仅打印非敏感的元信息（长度 / 是否携带上下文），不记录问题与八字内容
+    console.log('[ChatService] 调用LLM:', {
+      questionLength: question?.length ?? 0,
+      hasBazi: !!bazi,
+      hasFortune: !!fortune,
+      historyLength: history?.length ?? 0
+    });
 
     try {
       // 调用真实LLM
@@ -114,7 +119,7 @@ ${question}`;
         temperature: 0.8, // 保持一定的创意性
       });
 
-      console.log('[ChatService] LLM回复:', response.content?.slice(0, 100));
+      console.log('[ChatService] LLM回复成功，长度:', response.content?.length ?? 0);
 
       return { content: response.content };
     } catch (error) {

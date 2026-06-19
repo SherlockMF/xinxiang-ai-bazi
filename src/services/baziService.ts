@@ -503,12 +503,8 @@ export async function generateBaziProfile(userProfile: UserProfile): Promise<Baz
       metal: fiveElements.metal,
       water: fiveElements.water
     },
-    favorableElements: favorableElements.map(e => {
-      const names: Record<FiveElementType, string> = {
-        wood: '木', fire: '火', earth: '土', metal: '金', water: '水'
-      };
-      return names[e];
-    }),
+    // 内部统一保存英文枚举，展示时再用 ELEMENT_LABELS 转中文
+    favorableElements,
     personalityTags,
     summary,
     createdAt: new Date().toISOString(),

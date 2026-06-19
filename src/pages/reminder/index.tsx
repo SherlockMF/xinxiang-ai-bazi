@@ -64,7 +64,7 @@ const ReminderPage = () => {
             <View className="flex-1">
               <Label className="text-slate-200">开启每日提醒</Label>
               <Text className="block text-xs text-slate-500 mt-1">
-                开启后将在设定时间提醒你查看今日灵频
+                当前版本仅保存提醒偏好，暂不发送系统通知
               </Text>
             </View>
             <Switch
@@ -104,12 +104,12 @@ const ReminderPage = () => {
       {/* 提醒渠道说明 */}
       <Card className="mb-6 bg-gray-800 bg-opacity-30 border-gray-700">
         <CardContent className="p-4">
-          <Text className="block text-sm text-slate-400 mb-2">提醒渠道</Text>
+          <Text className="block text-sm text-slate-400 mb-2">关于提醒</Text>
           <Text className="block text-xs text-slate-500">
-            MVP版本暂使用应用内提醒，微信订阅消息将在后续版本上线。
+            当前版本仅在本地保存提醒偏好，暂不发送系统通知。
           </Text>
           <Text className="block text-xs text-slate-500 mt-2">
-            提醒设置仅保存本地，不会发送实际通知。
+            微信 / 抖音订阅消息推送将在后续版本接入，届时可凭此偏好按时提醒你查看今日灵频。
           </Text>
         </CardContent>
       </Card>
@@ -117,9 +117,9 @@ const ReminderPage = () => {
       {/* 当前设置状态 */}
       <View className="mt-6 p-4 rounded-xl bg-cyan-500 bg-opacity-10 border border-cyan-400 border-opacity-30">
         <Text className="block text-sm text-cyan-400">
-          {preference?.enabled 
-            ? `已开启提醒，时间：${preference.reminderTime}` 
-            : '提醒已关闭'}
+          {preference?.enabled
+            ? `已保存提醒偏好，时间：${preference.reminderTime}（暂不发送系统通知）`
+            : '提醒偏好已关闭'}
         </Text>
       </View>
 

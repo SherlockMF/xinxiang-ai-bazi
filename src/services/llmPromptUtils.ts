@@ -2,6 +2,7 @@
 // 生成赛博风格的祝福语和运势提示
 
 import type { BaziProfile, DailyFortune } from '../types';
+import { getElementLabel } from '../types';
 
 // 赛博祝福语库
 const CYBER_BLESSINGS_HIGH = [
@@ -59,7 +60,7 @@ export function generateFortunePrompt(bazi: BaziProfile, date: string): string {
 - 时柱：${bazi.hourPillar}
 - 日主：${bazi.dayMaster}
 - 五行能量：木${bazi.fiveElements.wood}% 火${bazi.fiveElements.fire}% 土${bazi.fiveElements.earth}% 金${bazi.fiveElements.metal}% 水${bazi.fiveElements.water}%
-- 喜用五行：${bazi.favorableElements.join('、')}
+- 喜用五行：${bazi.favorableElements.map(getElementLabel).join('、')}
 - 性格标签：${bazi.personalityTags.join('、')}
 - 命盘摘要：${bazi.summary}
 

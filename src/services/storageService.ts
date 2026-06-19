@@ -1,7 +1,8 @@
 // 本地存储服务 - storageService
-// MVP 版本使用 localStorage，预留 Supabase/云开发接入位置
+// 通过 storageAdapter 统一封装 Taro 同步存储，预留 Supabase/云开发接入位置
 
 import type { UserProfile, BaziProfile, DailyFortune, FavoriteAdvice, ChatMessage } from '../types';
+import { storage } from './storageAdapter';
 
 // 存储 keys
 const STORAGE_KEYS = {
@@ -10,7 +11,9 @@ const STORAGE_KEYS = {
   FORTUNE_CACHE: 'cyber_fortune_cache',
   FAVORITES: 'cyber_favorites',
   CHAT_HISTORY: 'cyber_chat_history',
-  REMINDER: 'cyber_reminder'
+  REMINDER: 'cyber_reminder',
+  // AI 深度命理分析缓存（与 analysisService 中的 key 保持一致）
+  BAZI_ANALYSIS: 'cyber_bazi_analysis'
 };
 
 /**
@@ -18,7 +21,7 @@ const STORAGE_KEYS = {
  */
 export function saveUserProfile(user: UserProfile): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
+    storage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
   } catch (error) {
     console.error('保存用户档案失败:', error);
   }
@@ -26,7 +29,7 @@ export function saveUserProfile(user: UserProfile): void {
 
 export function getUserProfile(): UserProfile | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+    const stored = storage.getItem(STORAGE_KEYS.USER_PROFILE);
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
@@ -34,7 +37,7 @@ export function getUserProfile(): UserProfile | null {
 }
 
 export function clearUserProfile(): void {
-  localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
+  storage.removeItem(STORAGE_KEYS.USER_PROFILE);
 }
 
 /**
@@ -42,7 +45,7 @@ export function clearUserProfile(): void {
  */
 export function saveBaziProfile(bazi: BaziProfile): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.BAZI_PROFILE, JSON.stringify(bazi));
+    storage.setItem(STORAGE_KEYS.BAZI_PROFILE, JSON.stringify(bazi));
   } catch (error) {
     console.error('保存八字档案失败:', error);
   }
@@ -50,7 +53,7 @@ export function saveBaziProfile(bazi: BaziProfile): void {
 
 export function getBaziProfile(): BaziProfile | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEYS.BAZI_PROFILE);
+    const stored = storage.getItem(STORAGE_KEYS.BAZI_PROFILE);
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
@@ -58,7 +61,7 @@ export function getBaziProfile(): BaziProfile | null {
 }
 
 export function clearBaziProfile(): void {
-  localStorage.removeItem(STORAGE_KEYS.BAZI_PROFILE);
+  storage.removeItem(STORAGE_KEYS.BAZI_PROFILE);
 }
 
 /**
@@ -66,11 +69,11 @@ export function clearBaziProfile(): void {
  */
 export function saveDailyFortune(fortune: DailyFortune): void {
   try {
-    const cache = localStorage.getItem(STORAGE_KEYS.FORTUNE_CACHE) || '{}';
+    const cache = storage.getItem(STORAGE_KEYS.FORTUNE_CACHE) || '{}';
     const parsed = JSON.parse(cache);
     const key = `${fortune.userId}_${fortune.date}`;
     parsed[key] = fortune;
-    localStorage.setItem(STORAGE_KEYS.FORTUNE_CACHE, JSON.stringify(parsed));
+    storage.setItem(STORAGE_KEYS.FORTUNE_CACHE, JSON.stringify(parsed));
   } catch (error) {
     console.error('保存运势失败:', error);
   }
@@ -78,7 +81,7 @@ export function saveDailyFortune(fortune: DailyFortune): void {
 
 export function getDailyFortune(userId: string, date: string): DailyFortune | null {
   try {
-    const cache = localStorage.getItem(STORAGE_KEYS.FORTUNE_CACHE);
+    const cache = storage.getItem(STORAGE_KEYS.FORTUNE_CACHE);
     if (!cache) return null;
     
     const parsed = JSON.parse(cache);
@@ -90,7 +93,7 @@ export function getDailyFortune(userId: string, date: string): DailyFortune | nu
 
 export function getAllFortunes(userId: string): DailyFortune[] {
   try {
-    const cache = localStorage.getItem(STORAGE_KEYS.FORTUNE_CACHE);
+    const cache = storage.getItem(STORAGE_KEYS.FORTUNE_CACHE);
     if (!cache) return [];
     
     const parsed = JSON.parse(cache);
@@ -104,7 +107,7 @@ export function getAllFortunes(userId: string): DailyFortune[] {
 }
 
 export function clearFortuneCache(): void {
-  localStorage.removeItem(STORAGE_KEYS.FORTUNE_CACHE);
+  storage.removeItem(STORAGE_KEYS.FORTUNE_CACHE);
 }
 
 /**
@@ -114,7 +117,7 @@ export function saveFavorite(favorite: FavoriteAdvice): void {
   try {
     const favorites = getFavorites(favorite.userId);
     favorites.push(favorite);
-    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
+    storage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
   } catch (error) {
     console.error('保存收藏失败:', error);
   }
@@ -122,7 +125,7 @@ export function saveFavorite(favorite: FavoriteAdvice): void {
 
 export function getFavorites(userId: string): FavoriteAdvice[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEYS.FAVORITES);
+    const stored = storage.getItem(STORAGE_KEYS.FAVORITES);
     if (!stored) return [];
     
     const parsed = JSON.parse(stored) as FavoriteAdvice[];
@@ -134,19 +137,19 @@ export function getFavorites(userId: string): FavoriteAdvice[] {
 
 export function removeFavorite(_userId: string, favoriteId: string): void {
   try {
-    const stored = localStorage.getItem(STORAGE_KEYS.FAVORITES);
+    const stored = storage.getItem(STORAGE_KEYS.FAVORITES);
     if (!stored) return;
     
     const parsed = JSON.parse(stored) as FavoriteAdvice[];
     const filtered = parsed.filter(f => f.id !== favoriteId);
-    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(filtered));
+    storage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(filtered));
   } catch (error) {
     console.error('移除收藏失败:', error);
   }
 }
 
 export function clearFavorites(): void {
-  localStorage.removeItem(STORAGE_KEYS.FAVORITES);
+  storage.removeItem(STORAGE_KEYS.FAVORITES);
 }
 
 /**
@@ -158,7 +161,7 @@ export function saveChatMessage(message: ChatMessage): void {
     history.push(message);
     // 保留最近 50 条
     const trimmed = history.slice(-50);
-    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(trimmed));
+    storage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(trimmed));
   } catch (error) {
     console.error('保存对话失败:', error);
   }
@@ -166,7 +169,7 @@ export function saveChatMessage(message: ChatMessage): void {
 
 export function getChatHistory(userId: string): ChatMessage[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
+    const stored = storage.getItem(STORAGE_KEYS.CHAT_HISTORY);
     if (!stored) return [];
     
     const parsed = JSON.parse(stored) as ChatMessage[];
@@ -177,7 +180,7 @@ export function getChatHistory(userId: string): ChatMessage[] {
 }
 
 export function clearChatHistory(): void {
-  localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+  storage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
 }
 
 /**
@@ -185,7 +188,7 @@ export function clearChatHistory(): void {
  */
 export function clearAllData(): void {
   Object.values(STORAGE_KEYS).forEach(key => {
-    localStorage.removeItem(key);
+    storage.removeItem(key);
   });
 }
 

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useUserStore, useFortuneStore, useChatStore } from '@/stores';
+import { useUserStore, useFortuneStore, useChatStore, useAnalysisStore } from '@/stores';
 import { clearAllData } from '@/services/storageService';
 import './index.css';
 
@@ -13,6 +13,7 @@ const MePage = () => {
   const { baziProfile, clearAll, loadUserProfile } = useUserStore();
   const { clearFavorites } = useFortuneStore();
   const { clearHistory } = useChatStore();
+  const { clearReport } = useAnalysisStore();
   
   // 删除确认弹窗
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -35,6 +36,7 @@ const MePage = () => {
     clearAll();
     clearFavorites();
     clearHistory();
+    clearReport();
     clearAllData();
     setShowDeleteConfirm(false);
     Taro.showToast({ title: '数据已清除', icon: 'success' });
@@ -106,7 +108,7 @@ const MePage = () => {
             className="menu-item flex justify-between items-center p-4 border-b border-gray-700 cursor-pointer"
             onClick={() => Taro.showModal({
               title: '隐私说明',
-              content: '本产品所有数据仅存储在你的本地设备中，我们不会收集、上传或分享你的任何个人信息。八字档案和运势内容仅供娱乐参考，不构成任何现实决策建议。',
+              content: '出生信息、八字档案、运势记录和收藏默认仅存储在你的本地设备，我们不会主动收集或分享。\n\n注意：使用「AI 追问」时会上传你的问题、八字摘要和今日运势；使用「AI 深度命理分析」时会上传出生信息与四柱八字。两者均发送至服务端用于 AI 生成回复，如不希望上传请勿使用这两个功能。\n\n以上内容仅供娱乐参考，不构成任何现实决策建议。',
               showCancel: false,
               confirmText: '我知道了'
             })}

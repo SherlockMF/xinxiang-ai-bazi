@@ -1,20 +1,84 @@
 // 八字档案页 - 展示四柱、五行能量、性格标签等
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useUserStore } from '@/stores';
+import { useUserStore, useAnalysisStore } from '@/stores';
+import { getElementLabel } from '@/types';
 import './bazi.css';
+
+// 轻量 Markdown 渲染：把 AI 返回的 Markdown 文本渲染成排版文本（避免引入新依赖）
+const renderAnalysis = (content: string) => {
+  return content.split('\n').map((rawLine, index) => {
+    const line = rawLine.trim();
+    const key = `line_${index}`;
+    if (!line) {
+      return <View key={key} className="h-2" />;
+    }
+    if (line.startsWith('## ')) {
+      return (
+        <Text key={key} className="block text-base font-bold text-cyan-400 mt-4 mb-1">
+          {line.replace(/^##\s+/, '')}
+        </Text>
+      );
+    }
+    if (line.startsWith('# ')) {
+      return (
+        <Text key={key} className="block text-lg font-bold text-cyan-300 mt-4 mb-1">
+          {line.replace(/^#\s+/, '')}
+        </Text>
+      );
+    }
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      return (
+        <Text key={key} className="block text-sm text-slate-200 leading-relaxed pl-3">
+          · {line.replace(/^[-*]\s+/, '')}
+        </Text>
+      );
+    }
+    return (
+      <Text key={key} className="block text-sm text-slate-200 leading-relaxed">
+        {line}
+      </Text>
+    );
+  });
+};
 
 const BaziPage = () => {
   const { userProfile, baziProfile, loadUserProfile, isLoading } = useUserStore();
+  const { report, isLoading: analysisLoading, error: analysisError, loadCachedReport, generateReport } = useAnalysisStore();
+
+  // 深度分析卡片是否展开
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   useEffect(() => {
     // 加载用户档案
     loadUserProfile();
   }, [loadUserProfile]);
+
+  // 进入页面时读取本地缓存的分析报告
+  useEffect(() => {
+    if (baziProfile) {
+      loadCachedReport(baziProfile.userId);
+    }
+  }, [baziProfile, loadCachedReport]);
+
+  // 生成 / 查看深度分析
+  const handleGenerateAnalysis = async () => {
+    if (!baziProfile || analysisLoading) return;
+    setShowAnalysis(true);
+    if (!report) {
+      await generateReport(userProfile, baziProfile);
+    }
+  };
+
+  // 重新生成深度分析
+  const handleRegenerateAnalysis = async () => {
+    if (!baziProfile || analysisLoading) return;
+    await generateReport(userProfile, baziProfile, true);
+  };
 
   // 如果没有档案，跳转到出生信息页
   useEffect(() => {
@@ -135,10 +199,7 @@ const BaziPage = () => {
             <View className="flex gap-2">
               {baziProfile.favorableElements.map((element) => (
                 <Badge key={element} className="bg-cyan-500 bg-opacity-30 text-cyan-400 border-cyan-400 border-opacity-30">
-                  {element === 'wood' ? '木' : 
-                   element === 'fire' ? '火' : 
-                   element === 'earth' ? '土' : 
-                   element === 'metal' ? '金' : '水'}
+                  {getElementLabel(element)}
                 </Badge>
               ))}
             </View>
@@ -165,6 +226,74 @@ const BaziPage = () => {
         <CardContent className="p-4">
           <Text className="block text-sm text-slate-400 mb-2">命盘摘要</Text>
           <Text className="block text-base text-slate-200 leading-relaxed">{baziProfile.summary}</Text>
+        </CardContent>
+      </Card>
+
+      {/* AI 深度命理分析 */}
+      <Card className="mb-6 bg-gradient-to-br from-gray-800 bg-opacity-50 to-cyan-900 bg-opacity-30 border-cyan-500 border-opacity-30">
+        <CardContent className="p-4">
+          <View className="flex justify-between items-center mb-2">
+            <Text className="block text-sm text-cyan-400">AI 深度命理分析</Text>
+            <Badge className="bg-purple-500 bg-opacity-30 text-purple-300">进阶</Badge>
+          </View>
+
+          {/* 未展开：介绍 + 生成按钮 */}
+          {!showAnalysis && !report && (
+            <View>
+              <Text className="block text-xs text-slate-400 leading-relaxed mb-3">
+                基于你的四柱，由 AI 参照传统命理框架生成日主旺衰、十神、格局、大运流年与综合建议的完整解读。
+              </Text>
+              <Text className="block text-xs text-slate-500 leading-relaxed mb-3">
+                注意：生成时会将你的出生信息与四柱发送至服务端用于 AI 分析；大运/流年为近似推演，仅供娱乐参考。
+              </Text>
+              <Button
+                onClick={handleGenerateAnalysis}
+                className="w-full h-10 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl border-0"
+              >
+                <Text className="text-white">生成 AI 深度分析</Text>
+              </Button>
+            </View>
+          )}
+
+          {/* 已触发或已有缓存：展示加载/报告/错误 */}
+          {(showAnalysis || report) && (
+            <View>
+              {analysisLoading && (
+                <Text className="block text-sm text-slate-400 py-4">正在生成完整命盘分析，请稍候…</Text>
+              )}
+
+              {!analysisLoading && analysisError && !report && (
+                <View className="py-3">
+                  <Text className="block text-sm text-pink-400 mb-3">生成失败：{analysisError}</Text>
+                  <Button
+                    onClick={handleGenerateAnalysis}
+                    variant="outline"
+                    className="w-full border-cyan-500 border-opacity-30"
+                  >
+                    <Text className="text-cyan-400">重试</Text>
+                  </Button>
+                </View>
+              )}
+
+              {!analysisLoading && report && (
+                <View>
+                  <View className="mt-1">{renderAnalysis(report.content)}</View>
+                  <View className="mt-4 pt-3 border-t border-gray-700">
+                    <Button
+                      onClick={handleRegenerateAnalysis}
+                      variant="outline"
+                      className="w-full border-purple-500 border-opacity-30"
+                    >
+                      <Text className="text-purple-400">重新生成</Text>
+                    </Button>
+                    <Text className="block text-xs text-slate-500 text-center mt-3">
+                      命理分析仅供娱乐与文化参考，不构成现实决策建议
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
         </CardContent>
       </Card>
 

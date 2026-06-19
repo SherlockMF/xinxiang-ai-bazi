@@ -1,6 +1,6 @@
 // AI追问页 - 用户可以追问运势相关问题
 import { View, Text } from '@tarojs/components';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,17 @@ import { useUserStore, useFortuneStore, useChatStore } from '@/stores';
 import './index.css';
 
 const ChatPage = () => {
-  const { baziProfile } = useUserStore();
+  const { baziProfile, loadUserProfile } = useUserStore();
   const { todayFortune } = useFortuneStore();
   const { messages, isSending, quickQuestions, loadHistory, sendMessage } = useChatStore();
   
-  // 输入框内容
-  const inputRef = useRef('');
+  // 输入框内容（受控）
+  const [inputValue, setInputValue] = useState('');
+
+  // 页面进入时从本地恢复档案（防止刷新后状态丢失）
+  useEffect(() => {
+    loadUserProfile();
+  }, [loadUserProfile]);
 
   useEffect(() => {
     if (baziProfile) {
@@ -24,11 +29,13 @@ const ChatPage = () => {
 
   // 发送消息
   const handleSend = async () => {
-    if (!baziProfile || !inputRef.current.trim()) return;
-    
-    const content = inputRef.current.trim();
-    inputRef.current = '';
-    
+    // 防止空内容和发送中重复提交
+    if (!baziProfile || isSending) return;
+    const content = inputValue.trim();
+    if (!content) return;
+
+    // 发送成功后清空输入框
+    setInputValue('');
     await sendMessage(baziProfile.userId, content, baziProfile, todayFortune);
   };
 
@@ -40,7 +47,7 @@ const ChatPage = () => {
 
   // 输入框变化
   const handleInputChange = (value: string) => {
-    inputRef.current = value;
+    setInputValue(value);
   };
 
   if (!baziProfile) {
@@ -131,13 +138,14 @@ const ChatPage = () => {
             <Input
               className="w-full bg-transparent text-slate-100"
               placeholder="输入你的问题..."
+              value={inputValue}
               onInput={(e) => handleInputChange(e.detail.value)}
               disabled={isSending}
             />
           </View>
-          <Button 
+          <Button
             onClick={handleSend}
-            disabled={isSending}
+            disabled={isSending || !inputValue.trim()}
             className="bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl"
           >
             <Text className="text-white">{isSending ? '发送中' : '发送'}</Text>
@@ -148,6 +156,9 @@ const ChatPage = () => {
       {/* 底部说明 */}
       <View className="px-4 pb-2 text-center">
         <Text className="block text-xs text-slate-500">
+          AI 追问会将你的问题、八字摘要和今日运势发送至服务端用于生成回复
+        </Text>
+        <Text className="block text-xs text-slate-500 mt-1">
           AI 回复仅供娱乐参考，不构成决策建议
         </Text>
       </View>

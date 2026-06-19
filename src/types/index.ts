@@ -33,8 +33,8 @@ export interface BaziProfile {
     metal: number;
     water: number;
   };
-  // 喜用五行
-  favorableElements: string[];
+  // 喜用五行（内部统一使用英文枚举，展示时用 ELEMENT_LABELS 转中文）
+  favorableElements: FiveElementType[];
   // 性格标签
   personalityTags: string[];
   // 命盘摘要
@@ -93,6 +93,14 @@ export interface ReminderPreference {
   updatedAt: string;
 }
 
+// 八字深度分析报告（AI 生成）
+export interface BaziAnalysisReport {
+  userId: string;
+  // Markdown 文本
+  content: string;
+  createdAt: string;
+}
+
 // 对话消息
 export interface ChatMessage {
   id: string;
@@ -112,6 +120,20 @@ export interface Pillar {
 
 // 五行类型
 export type FiveElementType = 'wood' | 'fire' | 'earth' | 'metal' | 'water';
+
+// 五行中文展示 label map（仅用于页面/文案展示，内部数据一律使用英文枚举）
+export const ELEMENT_LABELS: Record<FiveElementType, string> = {
+  wood: '木',
+  fire: '火',
+  earth: '土',
+  metal: '金',
+  water: '水'
+};
+
+// 将五行英文枚举转为中文 label
+export function getElementLabel(element: FiveElementType): string {
+  return ELEMENT_LABELS[element] ?? String(element);
+}
 
 // 天干
 export type HeavenlyStem = '甲' | '乙' | '丙' | '丁' | '戊' | '己' | '庚' | '辛' | '壬' | '癸';
