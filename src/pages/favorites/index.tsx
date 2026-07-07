@@ -1,128 +1,100 @@
-// 收藏页 - 展示用户收藏的建议和祝福
+// 珍藏页 - 今日心象、偈语与问心回应
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useUserStore } from '@/stores';
-import { getFavorites, removeFavorite } from '@/services/storageService';
-import type { FavoriteAdvice } from '@/types';
+import { getFavoriteItems, removeFavoriteItem, FAVORITE_TYPE_LABELS } from '@/services/favoriteService';
+import { truncateText } from '@/services/posterService';
+import type { FavoriteItem } from '@/types';
 import './index.css';
 
 const FavoritesPage = () => {
   const { baziProfile, loadUserProfile } = useUserStore();
-  const [favorites, setFavorites] = useState<FavoriteAdvice[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
 
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
 
-  useEffect(() => {
+  const refresh = () => {
     if (baziProfile) {
-      const favs = getFavorites(baziProfile.userId);
-      setFavorites(favs);
+      setFavorites(getFavoriteItems(baziProfile.userId));
     }
+  };
+
+  useEffect(() => {
+    refresh();
   }, [baziProfile]);
 
-  // 移除收藏
   const handleRemove = (favoriteId: string) => {
     if (!baziProfile) return;
-    removeFavorite(baziProfile.userId, favoriteId);
-    const favs = getFavorites(baziProfile.userId);
-    setFavorites(favs);
+    removeFavoriteItem(baziProfile.userId, favoriteId);
+    refresh();
     Taro.showToast({ title: '已移除', icon: 'success' });
-  };
-
-  // 类型标签颜色
-  const typeColors: Record<string, string> = {
-    summary: 'bg-cyan-500 bg-opacity-30 text-cyan-400 border-cyan-400 border-opacity-30',
-    action: 'bg-purple-500 bg-opacity-30 text-purple-400 border-purple-400 border-opacity-30',
-    blessing: 'bg-pink-500 bg-opacity-30 text-pink-400 border-pink-400 border-opacity-30',
-    yi: 'bg-cyan-500 bg-opacity-30 text-cyan-300 border-cyan-400 border-opacity-30',
-    ji: 'bg-pink-500 bg-opacity-30 text-pink-300 border-pink-400 border-opacity-30'
-  };
-
-  // 类型名称
-  const typeNames: Record<string, string> = {
-    summary: '运势',
-    action: '建议',
-    blessing: '祝福',
-    yi: '宜',
-    ji: '忌'
   };
 
   if (!baziProfile) {
     return (
-      <View className="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4">
-        <Text className="block text-lg text-slate-400">请先生成灵频档案</Text>
+      <View className="neu-page min-h-screen flex flex-col justify-center items-center p-4">
+        <Text className="block text-lg neu-muted mb-6 tracking-wide">心象未立，请先填写出生信息</Text>
+        <View className="neu-raised-sm rounded-2xl px-6 py-3" onClick={() => Taro.redirectTo({ url: '/pages/onboarding/birth' })}>
+          <Text className="neu-cyan tracking-wider">填写出生信息</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View className="favorites-container min-h-screen bg-slate-900 p-4 pb-8">
-      {/* 顶部标题 */}
-      <View className="mb-6">
-        <Text className="block text-2xl font-bold text-cyan-400">我的收藏</Text>
-        <Text className="block text-sm text-slate-400 mt-2">收藏的建议与祝福</Text>
+    <View className="favorites-container neu-page min-h-screen p-5 pb-8">
+      <View className="mb-6 mt-2">
+        <Text className="block text-2xl font-bold neu-cyan tracking-[0.15em]">我的珍藏</Text>
+        <Text className="block text-sm neu-muted mt-2 tracking-wide">收藏过的今日心象与问心回应</Text>
       </View>
 
-      {/* 空状态 */}
       {favorites.length === 0 && (
-        <View className="flex flex-col items-center justify-center mt-20">
-          <Text className="block text-lg text-slate-400 mb-4">暂无收藏</Text>
-          <Text className="block text-sm text-slate-500">在今日运势页收藏喜欢的建议</Text>
-          <Button 
-            onClick={() => Taro.switchTab({ url: '/pages/fortune/today' })}
-            className="mt-4 bg-gradient-to-r from-cyan-500 to-purple-500"
+        <View className="flex flex-col items-center justify-center mt-20 px-4">
+          <Text className="block text-base neu-fg mb-3 text-center">还没有珍藏的心象。</Text>
+          <Text className="block text-sm neu-muted mb-6 text-center leading-relaxed">
+            遇到想留下的一句话，可以把它收进签亭。
+          </Text>
+          <View
+            onClick={() => Taro.switchTab({ url: '/pages/share/index' })}
+            className="neu-raised neu-press rounded-2xl px-6 py-3"
           >
-            <Text className="text-white">查看今日运势</Text>
-          </Button>
+            <Text className="neu-cyan tracking-wide">去签亭看看</Text>
+          </View>
         </View>
       )}
 
-      {/* 收藏列表 */}
       {favorites.length > 0 && (
-        <View className="space-y-4">
+        <View className="flex flex-col gap-4">
           {favorites.map((fav) => (
-            <Card key={fav.id} className="bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-              <CardContent className="p-4">
-                {/* 顶部：类型和日期 */}
-                <View className="flex justify-between items-center mb-3">
-                  <Badge className={typeColors[fav.type] || typeColors.summary}>
-                    {typeNames[fav.type] || fav.type}
-                  </Badge>
-                  <Text className="block text-xs text-slate-500">
-                    {new Date(fav.createdAt).toLocaleDateString()}
-                  </Text>
+            <View key={fav.id} className="neu-raised rounded-3xl p-5">
+              <View className="flex justify-between items-center mb-3">
+                <View className="neu-raised-sm rounded-full px-3 py-1">
+                  <Text className="text-xs neu-cyan">{FAVORITE_TYPE_LABELS[fav.type]}</Text>
                 </View>
-                
-                {/* 内容 */}
-                <Text className="block text-base text-slate-200 leading-relaxed mb-3">
-                  {fav.content}
+                <Text className="block text-xs neu-muted">
+                  {fav.sourceDate || new Date(fav.createdAt).toLocaleDateString()}
                 </Text>
-                
-                {/* 移除按钮 */}
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => handleRemove(fav.id)}
-                  className="text-slate-400"
-                >
-                  <Text className="text-xs text-slate-400">移除收藏</Text>
-                </Button>
-              </CardContent>
-            </Card>
+              </View>
+
+              <Text className="block text-base neu-fg font-medium mb-2">{fav.title}</Text>
+              <Text className="block text-sm neu-muted leading-relaxed mb-3">
+                {truncateText(fav.content, 120)}
+              </Text>
+
+              <View onClick={() => handleRemove(fav.id)} className="self-start">
+                <Text className="text-xs neu-muted">移出珍藏</Text>
+              </View>
+            </View>
           ))}
         </View>
       )}
 
-      {/* 底部说明 */}
-      <View className="mt-6 text-center">
-        <Text className="block text-xs text-slate-500">
-          收藏内容仅存储在本地设备
-        </Text>
+      <View className="mt-8 text-center">
+        <Text className="block text-xs neu-muted">珍藏内容仅存于本地设备</Text>
+        <Text className="block text-xs neu-muted mt-1">内容仅作传统文化与自我观察参考</Text>
       </View>
     </View>
   );

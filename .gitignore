@@ -32,6 +32,7 @@ pnpm-debug.log*
 
 # Taro specific
 .taro/
+project.private.config.json
 
 # OS X
 .DS_Store

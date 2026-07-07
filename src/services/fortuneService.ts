@@ -1,48 +1,44 @@
-// 每日运势生成服务 - fortuneService
-// 根据八字档案生成个性化每日运势
+// 每日心象生成服务 - fortuneService
+// 根据八字档案 + 出生信息生成个性化每日心象（稳定 seed，同日不变）
 
-import type { BaziProfile, DailyFortune, FiveElementType } from '../types';
+import type { BaziProfile, DailyFortune, FiveElementType, UserProfile } from '../types';
 import { getElementLabel } from '../types';
+import { buildDailySeed, createSeededRandom, seededPick, seededPickOne } from './birthUtils';
 import { generateCyberBlessing } from './llmPromptUtils';
-import { storage } from './storageAdapter';
+import { getDailyFortune, saveDailyFortune } from './storageService';
+import { sanitizeFortuneTextFields } from './contentSafety';
 
-// 本地存储 key
-const FORTUNE_CACHE_KEY = 'cyber_fortune_cache';
-
-// 五行对应的运势倾向
 const ELEMENT_FORTUNE_TENDENCY: Record<string, { positive: string[]; negative: string[] }> = {
   wood: {
-    positive: ['开展新项目', '学习新技能', '社交活动', '创意表达', '户外运动'],
-    negative: ['过度竞争', '冲动决策', '与人争执']
+    positive: ['启新', '问学', '会友', '舒展', '亲木'],
+    negative: ['争竞', '躁进', '强求']
   },
   fire: {
-    positive: ['表达想法', '团队协作', '展示才华', '传递温暖', '光明活动'],
-    negative: ['情绪爆发', '过度承诺', '熬夜透支']
+    positive: ['言志', '相聚', '显才', '暖人', '向阳'],
+    negative: ['急怒', '轻诺', '耗神']
   },
   earth: {
-    positive: ['整理收纳', '巩固关系', '务实规划', '稳健投资', '承担责任'],
-    negative: ['过度保守', '拖延行动', '固守旧念']
+    positive: ['归整', '固本', '务实', '守诺', '安居'],
+    negative: ['滞守', '迟疑', '执旧']
   },
   metal: {
-    positive: ['果断决策', '追求品质', '提升效率', '整理边界', '设立规则'],
-    negative: ['过度批判', '苛求完美', '拒绝妥协']
+    positive: ['决断', '删繁', '立界', '循礼', '修身'],
+    negative: ['苛察', '求全', '拒和']
   },
   water: {
-    positive: ['深度思考', '灵活应变', '沟通协调', '学习吸收', '静心沉淀'],
-    negative: ['过度担忧', '思绪飘散', '情绪内耗']
+    positive: ['静思', '应变', '通和', '纳新', '沉心'],
+    negative: ['多虑', '散神', '内耗']
   }
 };
 
-// 幸运颜色库
 const LUCKY_COLORS: Record<string, string[]> = {
-  wood: ['绿色', '青色', '翠绿', '薄荷绿'],
-  fire: ['红色', '紫色', '橙色', '玫红'],
-  earth: ['黄色', '棕色', '米色', '咖啡色'],
-  metal: ['白色', '银色', '金色', '浅灰'],
-  water: ['蓝色', '黑色', '深蓝', '墨绿']
+  wood: ['竹青', '松绿', '缥碧', '艾绿'],
+  fire: ['绛红', '朱砂', '胭脂', '茜色'],
+  earth: ['赭黄', '秋香', '缃色', '黄栌'],
+  metal: ['月白', '素银', '缟素', '霜色'],
+  water: ['黛蓝', '靛青', '玄色', '黛色']
 };
 
-// 幸运方向库
 const LUCKY_DIRECTIONS: Record<string, string[]> = {
   wood: ['东方', '东南方'],
   fire: ['南方'],
@@ -51,104 +47,51 @@ const LUCKY_DIRECTIONS: Record<string, string[]> = {
   water: ['北方']
 };
 
-// 情绪关键词库
 const MOOD_KEYWORDS: string[] = [
-  '静谧流动', '温暖涌动', '稳重安和', '清晰锐利', '深沉洞察',
-  '灵感迸发', '情绪波动', '平和自在', '能量收敛', '灵动舒展'
+  '静水流深', '心如止水', '风过无痕', '月明心澈', '云淡风轻',
+  '气敛神藏', '潜龙在渊', '灵光乍现', '心起微澜', '舒卷自如'
 ];
 
-/**
- * 获取缓存运势
- */
-export function getCachedFortune(userId: string, date: string): DailyFortune | null {
-  try {
-    const cache = storage.getItem(FORTUNE_CACHE_KEY);
-    if (!cache) return null;
-    
-    const parsed = JSON.parse(cache);
-    const key = `${userId}_${date}`;
-    return parsed[key] || null;
-  } catch {
-    return null;
-  }
+function resolveTimeBranch(userProfile: UserProfile): string {
+  if (userProfile.unknownTime) return 'unknown';
+  return userProfile.timeBranch || 'unknown';
 }
 
-/**
- * 缓存运势
- */
-export function cacheFortune(fortune: DailyFortune): void {
-  try {
-    const cache = storage.getItem(FORTUNE_CACHE_KEY) || '{}';
-    const parsed = JSON.parse(cache);
-    const key = `${fortune.userId}_${fortune.date}`;
-    parsed[key] = fortune;
-    storage.setItem(FORTUNE_CACHE_KEY, JSON.stringify(parsed));
-  } catch {
-    // 缓存失败不影响主流程
-  }
-}
-
-/**
- * 生成今日宜（基于五行）
- */
-function generateYi(bazi: BaziProfile): string[] {
-  const favorable = bazi.favorableElements;
+function generateYi(bazi: BaziProfile, rand: () => number): string[] {
   const yi: string[] = [];
-  
-  favorable.forEach(element => {
+  bazi.favorableElements.forEach(element => {
     const tendency = ELEMENT_FORTUNE_TENDENCY[element];
     if (tendency) {
-      // 随机选取2-3个
-      const shuffled = [...tendency.positive].sort(() => Math.random() - 0.5);
-      yi.push(...shuffled.slice(0, 2));
+      yi.push(...seededPick(tendency.positive, 2, rand));
     }
   });
-  
-  // 添加通用宜
-  yi.push('保持正念', '顺应流');
-  
+  yi.push('守正', '顺势');
   return yi.slice(0, 5);
 }
 
-/**
- * 生成今日忌（基于五行）
- */
-function generateJi(bazi: BaziProfile): string[] {
+function generateJi(bazi: BaziProfile, rand: () => number): string[] {
   const favorable = bazi.favorableElements;
   const ji: string[] = [];
-  
-  // 找相反的五行
   const elements: FiveElementType[] = ['wood', 'fire', 'earth', 'metal', 'water'];
   const unfavorable = elements.filter(e => !favorable.includes(e)).slice(0, 2);
-  
+
   unfavorable.forEach(element => {
     const tendency = ELEMENT_FORTUNE_TENDENCY[element];
     if (tendency) {
-      const shuffled = [...tendency.negative].sort(() => Math.random() - 0.5);
-      ji.push(...shuffled.slice(0, 1));
+      ji.push(...seededPick(tendency.negative, 1, rand));
     }
   });
-  
-  // 添加通用忌
-  ji.push('情绪内耗');
-  
+  ji.push('神耗');
   return ji.slice(0, 3);
 }
 
-/**
- * 生成幸运色
- */
-function generateLuckyColor(bazi: BaziProfile): string {
+function generateLuckyColor(bazi: BaziProfile, rand: () => number): string {
   const element = bazi.favorableElements[0] || 'water';
   const colors = LUCKY_COLORS[element] || LUCKY_COLORS.water;
-  return colors[Math.floor(Math.random() * colors.length)];
+  return seededPickOne(colors, rand);
 }
 
-/**
- * 生成幸运数字
- */
-function generateLuckyNumber(bazi: BaziProfile): number {
-  // 五行对应数字
+function generateLuckyNumber(bazi: BaziProfile, rand: () => number): number {
   const elementNumbers: Record<string, number[]> = {
     wood: [3, 8],
     fire: [2, 7],
@@ -156,152 +99,136 @@ function generateLuckyNumber(bazi: BaziProfile): number {
     metal: [4, 9],
     water: [1, 6]
   };
-  
   const element = bazi.favorableElements[0] || 'water';
   const numbers = elementNumbers[element] || [1, 6];
-  return numbers[Math.floor(Math.random() * numbers.length)];
+  return seededPickOne(numbers, rand);
 }
 
-/**
- * 生成幸运方向
- */
-function generateLuckyDirection(bazi: BaziProfile): string {
+function generateLuckyDirection(bazi: BaziProfile, rand: () => number): string {
   const element = bazi.favorableElements[0] || 'water';
   const directions = LUCKY_DIRECTIONS[element] || LUCKY_DIRECTIONS.water;
-  return directions[Math.floor(Math.random() * directions.length)];
+  return seededPickOne(directions, rand);
 }
 
-/**
- * 生成情绪关键词
- */
-function generateMoodKeyword(): string {
-  return MOOD_KEYWORDS[Math.floor(Math.random() * MOOD_KEYWORDS.length)];
+function generateMoodKeyword(rand: () => number): string {
+  return seededPickOne(MOOD_KEYWORDS, rand);
 }
 
-/**
- * 生成综合分数（60-90区间为主）
- */
-function generateOverallScore(bazi: BaziProfile): number {
-  // 基于五行平衡度调整分数
+function generateOverallScore(bazi: BaziProfile, rand: () => number): number {
   const elements = Object.values(bazi.fiveElements);
   const maxDiff = Math.max(...elements) - Math.min(...elements);
-  
-  // 平衡度高则分数高
   const baseScore = 75 - maxDiff;
-  const randomOffset = Math.floor(Math.random() * 10) - 5;
-  
+  const randomOffset = Math.floor(rand() * 10) - 5;
   return Math.max(60, Math.min(90, baseScore + randomOffset));
 }
 
-/**
- * 生成运势摘要
- */
 function generateSummary(bazi: BaziProfile, score: number): string {
   const element = bazi.favorableElements[0] || 'water';
   const elementNames: Record<string, string> = {
     wood: '木', fire: '火', earth: '土', metal: '金', water: '水'
   };
-  
-  let trendDesc = '';
-  if (score >= 80) {
-    trendDesc = '今日能量流动顺畅，适合发挥你的特质';
-  } else if (score >= 70) {
-    trendDesc = '今日整体平稳，保持觉知即可';
-  } else {
-    trendDesc = '今日能量有波动，建议多关注内心';
-  }
-  
-  return `你的${elementNames[element]}气今日${score >= 75 ? '升腾' : '收敛'}。${trendDesc}。${bazi.personalityTags[0]}的你，今天适合${bazi.favorableElements.includes('water') ? '静心思考' : '积极表达'}。`;
+  const trendWord = score >= 80 ? '舒展升腾' : score >= 70 ? '中和平稳' : '内敛微澜';
+  const advice = bazi.favorableElements.includes('water') ? '宜静思以养神' : '宜舒展以应时';
+  return `${elementNames[element]}气今日${score >= 75 ? '升' : '敛'}，气数${trendWord}。${advice}，顺其势而不强求。`;
 }
 
-/**
- * 生成行动建议
- */
 function generateActionSuggestion(bazi: BaziProfile): string {
-  const suggestions: string[] = [
-    '早晨醒来后，花3分钟感受今日的能量状态',
-    '在重要决策前，先让情绪沉淀一下',
-    '与他人交流时，保持温和的边界感',
-    '完成一件事后，给自己一个小小的庆祝仪式',
-    '睡前回顾今日的心流时刻，写下3个收获',
-    '遇到不确定时，信任直觉的微妙信号',
-    '安排一段独处时间，让思绪自然流动',
-    '尝试用新的角度看待熟悉的日常'
-  ];
-  
-  // 基于五行选择建议
+  const suggestions: Record<FiveElementType, string> = {
+    wood: '晨起舒展四体，纳一口清气，任生意自生。',
+    fire: '言语之前，先令心火沉一沉，话到温处自暖人。',
+    earth: '择一事踏实做完，心自安稳，不必贪多。',
+    metal: '删去一桩冗事，立一分清界，身心自轻。',
+    water: '辟一段独处，静观思绪如水来去，不滞不留。'
+  };
   const element = bazi.favorableElements[0] || 'water';
-  const index = ['wood', 'fire', 'earth', 'metal', 'water'].indexOf(element);
-  
-  return suggestions[index] || suggestions[0];
+  return suggestions[element] || suggestions.water;
 }
 
 /**
- * 生成每日运势
- * MVP 版本：使用本地算法 + 模板生成，后续接入 LLM
- * @param force 为 true 时跳过缓存，强制重新生成并覆盖当天缓存（用于"重新生成"按钮）
+ * 生成每日心象
+ * @param force 为 true 时跳过缓存，强制重新生成
  */
-export async function generateDailyFortune(bazi: BaziProfile, date: string, force = false): Promise<DailyFortune> {
-  // 默认读取缓存；force=true 时跳过缓存
+export async function generateDailyFortune(
+  bazi: BaziProfile,
+  userProfile: UserProfile,
+  date: string,
+  force = false
+): Promise<DailyFortune> {
+  const timeBranch = resolveTimeBranch(userProfile);
+
   if (!force) {
-    const cached = getCachedFortune(bazi.userId, date);
-    if (cached) {
-      return cached;
-    }
+    const cached = getDailyFortune(bazi.userId, date, userProfile.birthDate, timeBranch);
+    if (cached) return sanitizeFortuneTextFields(cached);
   }
 
-  const score = generateOverallScore(bazi);
-  const yi = generateYi(bazi);
-  const ji = generateJi(bazi);
-  
+  const seed = buildDailySeed(userProfile, date);
+  const rand = createSeededRandom(seed);
+
+  const score = generateOverallScore(bazi, rand);
+  const yi = generateYi(bazi, rand);
+  const ji = generateJi(bazi, rand);
+
   const fortune: DailyFortune = {
-    id: `fortune_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    id: `fortune_${seed}`,
     userId: bazi.userId,
     date,
     overallScore: score,
-    moodKeyword: generateMoodKeyword(),
+    moodKeyword: generateMoodKeyword(rand),
     summary: generateSummary(bazi, score),
     yi,
     ji,
-    luckyColor: generateLuckyColor(bazi),
-    luckyNumber: generateLuckyNumber(bazi),
-    luckyDirection: generateLuckyDirection(bazi),
+    luckyColor: generateLuckyColor(bazi, rand),
+    luckyNumber: generateLuckyNumber(bazi, rand),
+    luckyDirection: generateLuckyDirection(bazi, rand),
     actionSuggestion: generateActionSuggestion(bazi),
-    cyberBlessing: generateCyberBlessing(score),
+    cyberBlessing: generateCyberBlessing(score, rand),
     createdAt: new Date().toISOString()
   };
-  
-  // 缓存运势
-  cacheFortune(fortune);
-  
-  return fortune;
+
+  const safeFortune = sanitizeFortuneTextFields(fortune);
+  saveDailyFortune(safeFortune, userProfile.birthDate, timeBranch);
+  return safeFortune;
+}
+
+/** @deprecated 请使用 storageService.getDailyFortune */
+export function getCachedFortune(userId: string, date: string): DailyFortune | null {
+  return getDailyFortune(userId, date, '', 'unknown');
+}
+
+/** @deprecated 请使用 storageService.saveDailyFortune */
+export function cacheFortune(fortune: DailyFortune): void {
+  saveDailyFortune(fortune, '', 'unknown');
 }
 
 /**
- * 生成宜忌解释
+ * 生成宜忌解释（稳定 seed）
  */
 export async function explainYiJi(
   bazi: BaziProfile,
   _fortune: DailyFortune,
   item: string,
-  type: 'yi' | 'ji'
+  type: 'yi' | 'ji',
+  userProfile?: UserProfile
 ): Promise<string> {
-  // MVP 版本：使用模板解释
-  // 喜用五行为英文枚举，展示时转为中文 label
+  const seed = userProfile
+    ? `${buildDailySeed(userProfile, _fortune.date)}_${type}_${item}`
+    : `${_fortune.date}_${type}_${item}`;
+  const rand = createSeededRandom(seed);
+
   const favorableLabel = bazi.favorableElements[0] ? getElementLabel(bazi.favorableElements[0]) : '水';
   const templates: Record<string, string[]> = {
     yi: [
-      `"${item}"与你的${favorableLabel}气相和。今天做这件事时，你会感受到能量的自然流动，不需要刻意用力。保持轻松的心态，让这件事成为你今日的能量补给站。`,
-      `你的日主${bazi.dayMaster}今天与"${item}"的能量频率共振。这不是硬性要求，而是顺势而为的温柔提示。如果你今天有这方面的计划，现在是个不错的时机。`,
-      `"${item}"能帮助你今日的能量状态更加平衡。不需要追求完美结果，过程中的感受才是真正有价值的部分。给自己一点时间，慢慢体验。`
+      `"${item}"与你的${favorableLabel}气相应。今日行此，如顺水行舟，不必用力，自有其势。且以平常心待之。`,
+      `日主${bazi.dayMaster}今日与"${item}"之气相和。非是定则，乃顺势之机。心有此念，便是时候。`,
+      `"${item}"可助今日气数趋于中和。不求圆满，但求安然；过程中的体察，便是所得。`
     ],
     ji: [
-      `"${item}"可能会消耗你今日的能量储备。这不是说这件事绝对不能做，而是提醒你：如果必须做，请给自己多一点缓冲空间，不要勉强。`,
-      `今天你的${favorableLabel}气不太适合"${item}"。如果这件事出现在你的计划中，可以试着换个角度，或者推迟到能量更充沛的时候。`,
-      `"${item}"与今日的能量流向有些冲突。如果你发现自己在这件事上遇到阻力，不必焦虑。这只是能量的自然调节，休息一下，换个方式试试。`
+      `"${item}"今日恐耗你之气。非谓绝不可为，若不得不为，且留三分余地，莫要勉强。`,
+      `今日${favorableLabel}气不合"${item}"。若此事在心，不妨缓行，或换一思路，待气足再图。`,
+      `"${item}"与今日气数稍逆。若行之遇阻，不必忧心，此乃气之自调。歇一歇，另寻其法。`
     ]
   };
-  
+
   const selected = templates[type];
-  return selected[Math.floor(Math.random() * selected.length)];
+  return selected[Math.floor(rand() * selected.length)];
 }

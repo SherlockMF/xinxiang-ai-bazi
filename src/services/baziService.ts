@@ -3,6 +3,7 @@
 // 参考：skills/bazi/SKILL.md 及 references 目录
 
 import type { UserProfile, BaziProfile, Pillar, HeavenlyStem, EarthlyBranch, FiveElementType } from '../types';
+import { resolveBirthTimeForChart } from './birthUtils';
 
 // ============== 基础常量表 ==============
 
@@ -440,16 +441,51 @@ function generateBaziSummary(
     wood: '木', fire: '火', earth: '土', metal: '金', water: '水'
   };
   
-  return `你是一位${dayMaster}日主，五行属${elementNames[dayElement]}。${dayMasterStrength.description}。你的命盘喜用${favorableNames}，在生活中多接触这些元素有助于提升运势。四柱配置为：年柱${pillars.year.heavenlyStem}${pillars.year.earthlyBranch}、月柱${pillars.month.heavenlyStem}${pillars.month.earthlyBranch}、日柱${pillars.day.heavenlyStem}${pillars.day.earthlyBranch}、时柱${pillars.hour.heavenlyStem}${pillars.hour.earthlyBranch}。`;
+  return `你是一位${dayMaster}日主，五行属${elementNames[dayElement]}。${dayMasterStrength.description}。你的心象盘宜亲近${favorableNames}之气，在生活中多接触这些元素有助于安顿心象。基础信息为：年${pillars.year.heavenlyStem}${pillars.year.earthlyBranch}、月${pillars.month.heavenlyStem}${pillars.month.earthlyBranch}、日${pillars.day.heavenlyStem}${pillars.day.earthlyBranch}、时${pillars.hour.heavenlyStem}${pillars.hour.earthlyBranch}。`;
+}
+
+// 此刻排盘结果（流年/流月/流日/流时四柱）
+export interface MomentPillars {
+  yearPillar: string;
+  monthPillar: string;
+  dayPillar: string;
+  hourPillar: string;
+  dayMaster: string; // 流日日干
+  hourLabel: string; // 时辰名，如「午时」
+}
+
+/**
+ * 此刻排盘：按传入时间（默认当前）排出当下的流年/流月/流日/流时四柱。
+ * 用于「今日心象 · 此刻」实时排盘。算法与本命排盘一致（公历近似，仅供娱乐）。
+ */
+export function computeMomentPillars(date: Date = new Date()): MomentPillars {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = date.getHours();
+
+  const yp = calculateYearPillar(year, month, day);
+  const mp = calculateMonthPillar(year, month, day, yp);
+  const dp = calculateDayPillar(year, month, day);
+  const hp = calculateHourPillar(dp, hour);
+
+  return {
+    yearPillar: yp.fullPillar,
+    monthPillar: mp.fullPillar,
+    dayPillar: dp.fullPillar,
+    hourPillar: hp.fullPillar,
+    dayMaster: dp.heavenlyStem,
+    hourLabel: `${hp.earthlyBranch}时`
+  };
 }
 
 /**
  * 生成八字档案（主函数）
  */
 export async function generateBaziProfile(userProfile: UserProfile): Promise<BaziProfile> {
-  // 解析出生日期和时间
   const [year, month, day] = userProfile.birthDate.split('-').map(Number);
-  const [hour, minute] = userProfile.birthTime.split(':').map(Number);
+  const chartTime = resolveBirthTimeForChart(userProfile);
+  const [hour, minute] = chartTime.split(':').map(Number);
   
   console.log('[baziService] 生成八字档案:', { year, month, day, hour, minute });
   

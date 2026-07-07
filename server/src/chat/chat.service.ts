@@ -1,133 +1,128 @@
-// AI对话服务 - NestJS 后端
+// AI 问心服务 - NestJS 后端
+
 import { Injectable } from '@nestjs/common';
-import { LLMClient, Config } from 'coze-coding-dev-sdk';
+import { ZhipuClient } from '../llm/zhipu.client';
+import type { AskAnswer, AskRequest, BaziLite, DailyXiangLite } from './ask.types';
+import { detectQuestionRisk } from './risk-detection';
+import {
+  buildAnswerContent,
+  GENERAL_FALLBACK_ANSWER,
+  parseAskAnswer,
+  SAFETY_FALLBACK_ANSWER
+} from './ask-answer.parser';
+import { buildAskSystemPrompt, buildAskUserPrompt } from './chat.prompt';
 
-interface BaziContext {
-  dayMaster?: string;
-  yearPillar?: string;
-  monthPillar?: string;
-  dayPillar?: string;
-  hourPillar?: string;
-  favorableElements?: string[];
-  personalityTags?: string[];
-  summary?: string;
-}
-
-interface FortuneContext {
-  overallScore?: number;
-  moodKeyword?: string;
-  yi?: string[];
-  ji?: string[];
-  luckyColor?: string;
-  actionSuggestion?: string;
-  summary?: string;
-}
-
-interface ChatInput {
-  userId: string;
-  question: string;
-  bazi?: BaziContext;
-  fortune?: FortuneContext;
-  history?: Array<{ role: string; content: string }>;
-}
-
-interface ChatResult {
-  content: string;
-}
+const MAX_QUESTION_LENGTH = 200;
 
 @Injectable()
 export class ChatService {
-  private llmClient: LLMClient;
-  private config: Config;
+  private llmClient: ZhipuClient;
 
   constructor() {
-    this.config = new Config();
-    this.llmClient = new LLMClient(this.config);
+    this.llmClient = new ZhipuClient();
+  }
+
+  private normalizeInput(input: AskRequest): {
+    question: string;
+    baziLite?: BaziLite;
+    dailyXiang?: DailyXiangLite;
+    questionType: AskRequest['questionType'];
+    history?: AskRequest['history'];
+  } {
+    const question = (input.question || '').trim().slice(0, MAX_QUESTION_LENGTH);
+    const baziLite = input.baziLite || input.bazi;
+    const dailyXiang = input.dailyXiang || input.fortune;
+    return {
+      question,
+      baziLite,
+      dailyXiang,
+      questionType: input.questionType || 'general',
+      history: input.history
+    };
+  }
+
+  private hasApiKey(): boolean {
+    return !!(process.env.ZHIPU_API_KEY && process.env.ZHIPU_API_KEY.trim());
   }
 
   /**
-   * 生成AI回复（接入真实LLM）
+   * 生成结构化心象回应
    */
-  async generateChatResponse(input: ChatInput): Promise<ChatResult> {
-    const { question, bazi, fortune, history } = input;
+  async generateChatResponse(input: AskRequest): Promise<{ content: string; answer: AskAnswer }> {
+    const { question, baziLite, dailyXiang, questionType, history } = this.normalizeInput(input);
 
-    // 构建系统提示
-    const systemPrompt = `你是一个赛博风格的东方玄学 AI 陪伴者，名为"赛博灵频"。你的任务是：
-1. 根据用户的八字命盘和今日运势，温柔地回答问题
-2. 不使用绝对化、恐吓式表述，避免说"一定会"、"必定"等词
-3. 以情绪陪伴和行动建议为主，给用户心理支持
-4. 保持赛博东方的语言风格，可以适当使用"能量流动"、"频率校准"等词汇
-5. 回复要简洁，控制在150字以内
-6. 在回复末尾提醒"这只是娱乐参考，不是命运预测"`;
+    if (!question) {
+      return {
+        content: GENERAL_FALLBACK_ANSWER.title,
+        answer: { ...GENERAL_FALLBACK_ANSWER, source: 'fallback' }
+      };
+    }
 
-    // 构建用户上下文
-    const baziInfo = bazi ? `
-【用户八字信息】
-- 年柱：${bazi.yearPillar || '未知'}
-- 月柱：${bazi.monthPillar || '未知'}
-- 日柱：${bazi.dayPillar || '未知'}
-- 时柱：${bazi.hourPillar || '未知'}
-- 日主：${bazi.dayMaster || '未知'}
-- 性格特质：${bazi.personalityTags?.join('、') || '未知'}
-- 喜用五行：${bazi.favorableElements?.join('、') || '未知'}
-` : '';
+    const risk = detectQuestionRisk(question);
+    if (risk.riskLevel === 'high') {
+      return {
+        content: SAFETY_FALLBACK_ANSWER.title,
+        answer: { ...SAFETY_FALLBACK_ANSWER }
+      };
+    }
 
-    const fortuneInfo = fortune ? `
-【今日运势】
-- 综合分数：${fortune.overallScore || 50}分
-- 情绪关键词：${fortune.moodKeyword || '平稳'}
-- 宜：${fortune.yi?.join('、') || '无特别建议'}
-- 忌：${fortune.ji?.join('、') || '无特别禁忌'}
-- 幸运色：${fortune.luckyColor || '无'}
-- 行动建议：${fortune.actionSuggestion || '顺其自然'}
-` : '';
+    if (!this.hasApiKey()) {
+      console.warn('[ChatService] 未配置 ZHIPU_API_KEY，使用 fallback');
+      return {
+        content: GENERAL_FALLBACK_ANSWER.title,
+        answer: { ...GENERAL_FALLBACK_ANSWER, source: 'fallback' }
+      };
+    }
 
-    // 构建对话历史
+    const relationshipMedium = risk.riskLevel === 'medium' && risk.reason === 'relationship';
+    const systemPrompt = buildAskSystemPrompt(relationshipMedium);
+    const userPrompt = buildAskUserPrompt(
+      question,
+      questionType || 'general',
+      baziLite,
+      dailyXiang
+    );
+
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt }
     ];
 
-    // 添加历史消息
     if (history && history.length > 0) {
-      for (const msg of history) {
+      for (const msg of history.slice(-6)) {
         messages.push({
           role: msg.role === 'user' ? 'user' : 'assistant',
-          content: msg.content
+          content: msg.content.slice(0, 200)
         });
       }
     }
 
-    // 添加当前问题（包含上下文）
-    const userMessage = `${baziInfo}${fortuneInfo}
-【用户问题】
-${question}`;
+    messages.push({ role: 'user', content: userPrompt });
 
-    messages.push({ role: 'user', content: userMessage });
-
-    // 隐私：仅打印非敏感的元信息（长度 / 是否携带上下文），不记录问题与八字内容
     console.log('[ChatService] 调用LLM:', {
-      questionLength: question?.length ?? 0,
-      hasBazi: !!bazi,
-      hasFortune: !!fortune,
+      questionLength: question.length,
+      questionType,
+      riskLevel: risk.riskLevel,
+      hasBazi: !!baziLite,
+      hasDailyXiang: !!dailyXiang,
       historyLength: history?.length ?? 0
     });
 
     try {
-      // 调用真实LLM
       const response = await this.llmClient.invoke(messages, {
-        model: 'doubao-seed-2-0-lite-260215', // 使用轻量模型，快速响应
-        temperature: 0.8, // 保持一定的创意性
+        temperature: 0.7,
+        maxTokens: 800
       });
 
-      console.log('[ChatService] LLM回复成功，长度:', response.content?.length ?? 0);
-
-      return { content: response.content };
+      const answer = parseAskAnswer(response.content || '', 'ai');
+      return {
+        content: buildAnswerContent(answer),
+        answer
+      };
     } catch (error) {
       console.error('[ChatService] LLM调用失败:', error);
-
-      // 兜底回复
       return {
-        content: `我理解你的问题。基于你的命盘特点，建议保持觉知，顺应能量流动。记住，命运不是固定的剧本，你始终拥有选择的空间。这只是情绪陪伴，不是绝对的指导。`
+        content: GENERAL_FALLBACK_ANSWER.title,
+        answer: { ...GENERAL_FALLBACK_ANSWER, source: 'fallback' }
       };
     }
   }

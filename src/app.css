@@ -154,3 +154,98 @@ image {
   background-color: var(--selection);
   color: var(--selection-foreground);
 }
+
+/* ============================================================
+   新拟物 (Neumorphism) 设计基础层 - 深炭灰
+   元素与背景同色，靠"左上亮 / 右下暗"双向阴影从背景凸起。
+   凹陷态用 inset 阴影。点缀色保持低饱和，仅用于关键信息。
+   ============================================================ */
+:root,
+page,
+root-portal {
+  /* 宣纸米白 + 暖调双向阴影 */
+  --neu-bg: #e8e3da;
+  --neu-dark: #c3bcae;
+  --neu-light: #fdfaf3;
+  --neu-text: #4a443b;
+  --neu-text-muted: #968e7f;
+  /* 国风低饱和点缀色：黛青 / 黛紫 / 绛朱 / 赭石 */
+  --neu-cyan: #3f7a78;
+  --neu-purple: #6f5d92;
+  --neu-pink: #a85761;
+  --neu-amber: #9a6f3c;
+}
+
+/* 页面底色 */
+.neu-page {
+  background-color: var(--neu-bg);
+}
+
+/* 凸起面：卡片 / 容器 */
+.neu-raised {
+  background-color: var(--neu-bg);
+  box-shadow:
+    6px 6px 12px var(--neu-dark),
+    -6px -6px 12px var(--neu-light);
+}
+
+/* 小号凸起：标签 / 按钮 / 小元素 */
+.neu-raised-sm {
+  background-color: var(--neu-bg);
+  box-shadow:
+    4px 4px 8px var(--neu-dark),
+    -4px -4px 8px var(--neu-light);
+}
+
+/* 凹陷面：输入框 / 被选中 / 内嵌槽位 */
+.neu-pressed {
+  background-color: var(--neu-bg);
+  box-shadow:
+    inset 4px 4px 8px var(--neu-dark),
+    inset -4px -4px 8px var(--neu-light);
+}
+
+/* 点缀色文本工具 */
+.neu-cyan {
+  color: var(--neu-cyan);
+}
+
+.neu-purple {
+  color: var(--neu-purple);
+}
+
+.neu-pink {
+  color: var(--neu-pink);
+}
+
+.neu-amber {
+  color: var(--neu-amber);
+}
+
+/* 凹陷小号 */
+.neu-pressed-sm {
+  background-color: var(--neu-bg);
+  box-shadow:
+    inset 3px 3px 6px var(--neu-dark),
+    inset -3px -3px 6px var(--neu-light);
+}
+
+/* 按压态：凸起按钮按下时切换为凹陷，模拟实体按键 */
+.neu-press {
+  transition: box-shadow 0.15s ease-out;
+}
+
+.neu-press:active {
+  box-shadow:
+    inset 5px 5px 10px var(--neu-dark),
+    inset -5px -5px 10px var(--neu-light);
+}
+
+/* 文本色工具 */
+.neu-fg {
+  color: var(--neu-text);
+}
+
+.neu-muted {
+  color: var(--neu-text-muted);
+}

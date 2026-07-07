@@ -187,7 +187,8 @@ export default defineConfig<'vite'>(async (merge, _env) => {
         open: false,
         proxy: {
           '/api': {
-            target: 'http://localhost:3000',
+            // 与后端默认端口保持一致（SERVER_PORT，默认 3100）
+            target: `http://localhost:${process.env.SERVER_PORT || process.env.PORT || 3100}`,
             changeOrigin: true,
           },
         },

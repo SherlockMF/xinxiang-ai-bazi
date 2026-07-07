@@ -1,13 +1,13 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '我的收藏',
-      navigationBarBackgroundColor: '#0f172a',
-      navigationBarTextStyle: 'white',
-      backgroundColor: '#0f172a'
+      navigationBarTitleText: '珍藏',
+      navigationBarBackgroundColor: '#e8e3da',
+      navigationBarTextStyle: 'black',
+      backgroundColor: '#e8e3da'
     })
   : {
-      navigationBarTitleText: '我的收藏',
-      navigationBarBackgroundColor: '#0f172a',
-      navigationBarTextStyle: 'white',
-      backgroundColor: '#0f172a'
+      navigationBarTitleText: '珍藏',
+      navigationBarBackgroundColor: '#e8e3da',
+      navigationBarTextStyle: 'black',
+      backgroundColor: '#e8e3da'
     }

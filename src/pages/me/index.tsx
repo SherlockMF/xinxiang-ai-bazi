@@ -1,164 +1,329 @@
-// 我的页面 - 用户中心，各种入口
-import { View, Text } from '@tarojs/components';
+// 本心页 - 个人资料、留存记录、每日心约与隐私设置
+import { View, Text, Picker } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useUserStore, useFortuneStore, useChatStore, useAnalysisStore } from '@/stores';
-import { clearAllData } from '@/services/storageService';
+import { useUserStore, useFortuneStore, useChatStore, useAnalysisStore, useReminderStore } from '@/stores';
+import { RELATION_LABELS } from '@/types';
+import { getVisitStats, getStreakDisplayText } from '@/services/visitStatsService';
+import { getRecentHistory } from '@/services/historyService';
+import { getFavoriteItems } from '@/services/favoriteService';
+import { getChatHistory } from '@/services/storageService';
+import { truncateText } from '@/services/posterService';
+import type { DailyXiangHistoryItem } from '@/types';
 import './index.css';
 
 const MePage = () => {
-  const { baziProfile, clearAll, loadUserProfile } = useUserStore();
-  const { clearFavorites } = useFortuneStore();
+  const { baziProfile, userProfile, profiles, clearAll, loadUserProfile } = useUserStore();
+  const { clearFavorites, clearTodayFortune } = useFortuneStore();
   const { clearHistory } = useChatStore();
   const { clearReport } = useAnalysisStore();
-  
-  // 删除确认弹窗
+  const { preference, loadPreference, saveSettings, clearPreference } = useReminderStore();
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState('08:30');
+  const [visitStreakText, setVisitStreakText] = useState('');
+  const [totalVisitDays, setTotalVisitDays] = useState(0);
+  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [askCount, setAskCount] = useState(0);
+  const [historyItems, setHistoryItems] = useState<DailyXiangHistoryItem[]>([]);
+
+  const refreshStats = useCallback(() => {
+    if (!baziProfile) return;
+    const uid = baziProfile.userId;
+    const stats = getVisitStats(uid);
+    setVisitStreakText(getStreakDisplayText(stats));
+    setTotalVisitDays(stats.totalVisitDays);
+    setFavoriteCount(getFavoriteItems(uid).length);
+    setAskCount(getChatHistory(uid).filter(m => m.role === 'user').length);
+    setHistoryItems(getRecentHistory(uid, 7));
+  }, [baziProfile]);
 
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
 
-  // 导航到各页面
-  const navigateTo = (url: string) => {
-    if (url.includes('bazi')) {
-      Taro.navigateTo({ url: '/pages/profile/bazi' });
-    } else {
-      Taro.navigateTo({ url });
+  useEffect(() => {
+    if (baziProfile) {
+      loadPreference(baziProfile.userId);
+      refreshStats();
     }
-  };
+  }, [baziProfile, loadPreference, refreshStats]);
 
-  // 清除所有数据
+  useEffect(() => {
+    if (preference) {
+      setReminderEnabled(preference.enabled);
+      setReminderTime(preference.time || preference.reminderTime || '08:30');
+    }
+  }, [preference]);
+
+  useEffect(() => {
+    const handler = () => refreshStats();
+    Taro.eventCenter.on('xinxiang:retention-updated', handler);
+    return () => {
+      Taro.eventCenter.off('xinxiang:retention-updated', handler);
+    };
+  }, [refreshStats]);
+
   const handleClearData = () => {
     clearAll();
     clearFavorites();
+    clearTodayFortune();
     clearHistory();
     clearReport();
-    clearAllData();
+    clearPreference();
+    setReminderEnabled(false);
+    setReminderTime('08:30');
     setShowDeleteConfirm(false);
-    Taro.showToast({ title: '数据已清除', icon: 'success' });
-    // 跳转到欢迎页
+    Taro.showToast({ title: '本地数据已清除', icon: 'success' });
     setTimeout(() => {
-      Taro.redirectTo({ url: '/pages/index/index' });
+      Taro.redirectTo({ url: '/pages/onboarding/birth' });
     }, 1500);
   };
 
+  const handleSaveReminder = async () => {
+    if (!baziProfile) return;
+    await saveSettings(baziProfile.userId, reminderEnabled, reminderTime);
+  };
+
   return (
-    <View className="me-container min-h-screen bg-slate-900 p-4 pb-8">
-      {/* 顶部标题 */}
-      <View className="mb-6">
-        <Text className="block text-2xl font-bold text-cyan-400">我的</Text>
+    <View className="me-container neu-page min-h-screen p-5 pb-8">
+      <View className="mb-6 mt-2">
+        <Text className="block text-2xl font-bold neu-cyan tracking-[0.3em]">本心</Text>
       </View>
 
-      {/* 用户信息卡片 */}
-      {baziProfile && (
-        <Card className="mb-6 bg-gradient-to-br from-gray-800 bg-opacity-50 to-cyan-900 bg-opacity-30 border-cyan-500 border-opacity-20">
-          <CardContent className="p-4">
+      {/* 用户信息 */}
+      {baziProfile && userProfile ? (
+        <>
+          <View className="neu-raised rounded-3xl p-5 mb-5">
             <View className="flex items-center gap-4">
-              {/* 头像/日主 */}
-              <View className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
-                <Text className="block text-xl font-bold text-white">{baziProfile.dayMaster}</Text>
+              <View className="neu-raised-sm w-16 h-16 rounded-full flex items-center justify-center shrink-0">
+                <Text className="block text-2xl font-bold neu-cyan">{baziProfile.dayMaster}</Text>
               </View>
               <View className="flex-1">
-                <Text className="block text-lg text-slate-200">日主 {baziProfile.dayMaster}</Text>
-                <Text className="block text-sm text-slate-400 mt-1">
-                  {baziProfile.yearPillar} · {baziProfile.monthPillar} · {baziProfile.dayPillar} · {baziProfile.hourPillar}
+                <View className="flex items-center gap-2">
+                  <Text className="block text-lg neu-fg">{userProfile.nickname || '本心'}</Text>
+                  <View className="neu-raised-sm rounded-full px-2 py-1">
+                    <Text className="text-xs neu-purple">{RELATION_LABELS[userProfile.relation || 'other']}</Text>
+                  </View>
+                </View>
+                <Text className="block text-sm neu-muted mt-2 tracking-wide">
+                  出生 {userProfile.birthDate}
+                  {userProfile.unknownTime
+                    ? ' · 时辰不详'
+                    : userProfile.birthTime
+                      ? ` ${userProfile.birthTime}`
+                      : userProfile.timeBranch
+                        ? ` · ${userProfile.timeBranch}`
+                        : ''}
                 </Text>
               </View>
             </View>
-          </CardContent>
-        </Card>
+          </View>
+
+          {/* 本心画像摘要 */}
+          <View className="neu-raised rounded-3xl p-5 mb-5">
+            <Text className="block text-sm neu-muted mb-3 tracking-[0.2em]">本心画像</Text>
+            <View className="flex flex-wrap gap-2 mb-3">
+              {baziProfile.personalityTags.slice(0, 4).map((tag) => (
+                <View key={tag} className="neu-raised-sm rounded-xl px-3 py-1">
+                  <Text className="text-xs neu-purple">{tag}</Text>
+                </View>
+              ))}
+            </View>
+            <Text className="block text-sm neu-fg leading-relaxed mb-3">
+              {truncateText(baziProfile.summary, 80)}
+            </Text>
+            <View
+              className="neu-raised-sm rounded-2xl h-10 flex items-center justify-center"
+              onClick={() => Taro.navigateTo({ url: '/pages/profile/bazi' })}
+            >
+              <Text className="text-sm neu-cyan">查看完整心象盘</Text>
+            </View>
+          </View>
+
+          {/* 心象记录 */}
+          <View className="neu-raised rounded-3xl p-5 mb-5">
+            <Text className="block text-sm neu-muted mb-4 tracking-[0.2em]">心象记录</Text>
+            <View className="grid grid-cols-2 gap-4">
+              <View className="neu-pressed-sm rounded-2xl p-3">
+                <Text className="block text-xs neu-muted mb-1">连续观心</Text>
+                <Text className="block text-sm neu-cyan">{visitStreakText || '—'}</Text>
+              </View>
+              <View className="neu-pressed-sm rounded-2xl p-3">
+                <Text className="block text-xs neu-muted mb-1">累计观心</Text>
+                <Text className="block text-sm neu-fg">{totalVisitDays} 天</Text>
+              </View>
+              <View
+                className="neu-pressed-sm rounded-2xl p-3"
+                onClick={() => Taro.switchTab({ url: '/pages/share/index' })}
+              >
+                <Text className="block text-xs neu-muted mb-1">珍藏心象</Text>
+                <Text className="block text-sm neu-purple">{favoriteCount}</Text>
+              </View>
+              <View
+                className="neu-pressed-sm rounded-2xl p-3"
+                onClick={() => Taro.switchTab({ url: '/pages/chat/index' })}
+              >
+                <Text className="block text-xs neu-muted mb-1">问心次数</Text>
+                <Text className="block text-sm neu-fg">{askCount}</Text>
+              </View>
+            </View>
+            {favoriteCount === 0 && (
+              <Text className="block text-xs neu-muted mt-3 leading-relaxed">
+                还没有珍藏的心象。遇到想留下的一句话，可以把它收进签亭。
+              </Text>
+            )}
+            {askCount === 0 && (
+              <Text className="block text-xs neu-muted mt-2 leading-relaxed">
+                还没有问心记录。当某个问题反复出现时，可以来这里问一问。
+              </Text>
+            )}
+          </View>
+        </>
+      ) : (
+        <View className="neu-raised rounded-3xl p-5 mb-5">
+          <Text className="block text-base neu-muted mb-2 leading-relaxed">
+            填写出生信息后，这里会生成你的本心画像。
+          </Text>
+          <View
+            className="neu-raised-sm rounded-2xl h-11 flex items-center justify-center mt-3"
+            onClick={() => Taro.navigateTo({ url: '/pages/onboarding/birth' })}
+          >
+            <Text className="neu-cyan tracking-wide">填写出生信息</Text>
+          </View>
+        </View>
       )}
 
-      {/* 功能入口列表 */}
-      <Card className="mb-6 bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-        <CardContent className="p-0">
-          {/* 八字档案 */}
-          <View 
-            className="menu-item flex justify-between items-center p-4 border-b border-gray-700 cursor-pointer"
-            onClick={() => navigateTo('/pages/profile/bazi')}
-          >
-            <Text className="block text-base text-slate-200">我的八字档案</Text>
-            <Text className="text-cyan-400">→</Text>
+      {/* 每日心约 */}
+      {baziProfile && (
+        <View className="neu-raised rounded-3xl p-5 mb-5">
+          <Text className="block text-sm neu-muted mb-2 tracking-[0.2em]">每日心约</Text>
+          <Text className="block text-xs neu-muted mb-4 leading-relaxed">
+            在你习惯的时间，留一刻给今日心象。
+          </Text>
+          <View className="flex justify-between items-center mb-4">
+            <Label className="neu-fg">开启每日心约</Label>
+            <Switch
+              checked={reminderEnabled}
+              onCheckedChange={setReminderEnabled}
+            />
           </View>
-          
-          {/* 收藏 */}
-          <View 
-            className="menu-item flex justify-between items-center p-4 border-b border-gray-700 cursor-pointer"
-            onClick={() => Taro.switchTab({ url: '/pages/favorites/index' })}
+          {reminderEnabled && (
+            <View className="mb-4">
+              <Label className="neu-muted mb-2">提醒时间</Label>
+              <Picker
+                mode="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.detail.value)}
+              >
+                <View className="neu-pressed rounded-2xl px-4 py-3 flex items-center justify-between">
+                  <Text className="neu-fg">{reminderTime}</Text>
+                  <Text className="neu-muted text-xs">▾</Text>
+                </View>
+              </Picker>
+            </View>
+          )}
+          <View
+            onClick={handleSaveReminder}
+            className="neu-raised-sm rounded-2xl h-11 flex items-center justify-center"
           >
-            <Text className="block text-base text-slate-200">我的收藏</Text>
-            <Text className="text-cyan-400">→</Text>
+            <Text className="neu-cyan tracking-wide">保存设置</Text>
           </View>
-          
-          {/* 提醒设置 */}
-          <View 
-            className="menu-item flex justify-between items-center p-4 border-b border-gray-700 cursor-pointer"
-            onClick={() => navigateTo('/pages/reminder/index')}
-          >
-            <Text className="block text-base text-slate-200">提醒设置</Text>
-            <Text className="text-cyan-400">→</Text>
-          </View>
-          
-          {/* 隐私说明 */}
-          <View 
-            className="menu-item flex justify-between items-center p-4 border-b border-gray-700 cursor-pointer"
-            onClick={() => Taro.showModal({
-              title: '隐私说明',
-              content: '出生信息、八字档案、运势记录和收藏默认仅存储在你的本地设备，我们不会主动收集或分享。\n\n注意：使用「AI 追问」时会上传你的问题、八字摘要和今日运势；使用「AI 深度命理分析」时会上传出生信息与四柱八字。两者均发送至服务端用于 AI 生成回复，如不希望上传请勿使用这两个功能。\n\n以上内容仅供娱乐参考，不构成任何现实决策建议。',
-              showCancel: false,
-              confirmText: '我知道了'
-            })}
-          >
-            <Text className="block text-base text-slate-200">隐私说明</Text>
-            <Text className="text-cyan-400">→</Text>
-          </View>
-        </CardContent>
-      </Card>
+        </View>
+      )}
 
-      {/* 清除数据 */}
+      {/* 近七日心象 */}
+      {baziProfile && (
+        <View className="neu-raised rounded-3xl p-5 mb-5">
+          <Text className="block text-sm neu-muted mb-4 tracking-[0.2em]">近七日心象</Text>
+          {historyItems.length === 0 ? (
+            <Text className="block text-sm neu-muted leading-relaxed">
+              还没有留下心象记录。{'\n'}看过今日心象后，它会自然留在这里。
+            </Text>
+          ) : (
+            <View className="flex flex-col gap-3">
+              {historyItems.map((item) => (
+                <View key={item.date} className="neu-pressed-sm rounded-2xl p-4">
+                  <Text className="block text-xs neu-muted mb-1">{item.date}</Text>
+                  <Text className="block text-sm neu-cyan font-medium mb-1">{item.title}</Text>
+                  <Text className="block text-xs neu-fg italic leading-relaxed mb-2">
+                    {truncateText(item.verse, 40)}
+                  </Text>
+                  {item.keywords && item.keywords.length > 0 && (
+                    <Text className="block text-xs neu-purple">
+                      {item.keywords.slice(0, 3).join(' · ')}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* 快捷入口与隐私 */}
+      <View className="neu-raised rounded-3xl p-2 mb-5">
+        {profiles.length > 1 && (
+          <View
+            className="menu-item flex justify-between items-center px-4 py-4"
+            onClick={() => Taro.navigateTo({ url: '/pages/profiles/index' })}
+          >
+            <Text className="block text-base neu-fg">本心档案（{profiles.length}位）</Text>
+            <Text className="neu-cyan">›</Text>
+          </View>
+        )}
+        <View
+          className="menu-item flex justify-between items-center px-4 py-4"
+          onClick={() => Taro.navigateTo({ url: '/pages/onboarding/birth?edit=1' })}
+        >
+          <Text className="block text-base neu-fg">修改出生信息</Text>
+          <Text className="neu-cyan">›</Text>
+        </View>
+        <View
+          className="menu-item flex justify-between items-center px-4 py-4"
+          onClick={() => Taro.showModal({
+            title: '隐私说明',
+            content: '生辰、心象盘、心象记录与珍藏默认仅存于你的本地设备，我们不会主动收集或分享。\n\n使用「问心」时会上传心象摘要与问题；使用「深度心象解读」时会上传出生信息与心象盘摘要。两者均发送至服务端用于 AI 生成回复。\n\n以上所言仅为自我观察与情绪陪伴参考，不构成任何现实决策建议。',
+            showCancel: false,
+            confirmText: '我知道了'
+          })}
+        >
+          <Text className="block text-base neu-fg">隐私说明</Text>
+          <Text className="neu-cyan">›</Text>
+        </View>
+      </View>
+
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogTrigger className="w-full">
-          <Button variant="outline" className="w-full border-red-500 border-opacity-30">
-            <Text className="text-red-400">清除本地数据</Text>
-          </Button>
+          <View className="neu-raised-sm w-full h-12 rounded-2xl flex items-center justify-center">
+            <Text className="neu-pink">清除本地数据</Text>
+          </View>
         </AlertDialogTrigger>
-        <AlertDialogContent className="bg-gray-800 border-red-500 border-opacity-30">
+        <AlertDialogContent className="neu-raised border-0 rounded-3xl" style={{ backgroundColor: 'var(--neu-bg)' }}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-400">确认清除数据</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-300">
-              此操作将清除所有本地数据，包括：
-              {'\n'}• 用户档案和八字档案
-              {'\n'}• 运势记录和收藏
-              {'\n'}• 对话历史和提醒设置
-              {'\n'}{'\n'}清除后需要重新输入出生信息。
+            <AlertDialogTitle className="neu-pink">确认清除数据</AlertDialogTitle>
+            <AlertDialogDescription className="neu-muted">
+              清除后将删除本机保存的出生信息、今日心象、观心记录、珍藏、问心记录与每日心约，是否继续？
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-600">
-              <Text className="text-slate-400">取消</Text>
+            <AlertDialogCancel className="border-0" style={{ backgroundColor: 'var(--neu-bg)' }}>
+              <Text className="neu-muted">取消</Text>
             </AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-red-500"
-              onClick={handleClearData}
-            >
+            <AlertDialogAction style={{ backgroundColor: 'var(--neu-pink)' }} onClick={handleClearData}>
               <Text className="text-white">确认清除</Text>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 底部说明 */}
-      <View className="mt-8 text-center">
-        <Text className="block text-xs text-slate-500">
-          赛博灵频 · 仅供娱乐参考
-        </Text>
-        <Text className="block text-xs text-slate-500 mt-1">
-          不构成任何现实决策建议
-        </Text>
+      <View className="mt-4 text-center">
+        <Text className="block text-xs neu-muted">心象 · 所言仅为遣怀清心</Text>
+        <Text className="block text-xs neu-muted mt-1">不构成任何现实决策建议</Text>
       </View>
     </View>
   );

@@ -1,13 +1,13 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '灵频档案',
-      navigationBarBackgroundColor: '#0f172a',
-      navigationBarTextStyle: 'white',
-      backgroundColor: '#0f172a'
+      navigationBarTitleText: '心象盘',
+      navigationBarBackgroundColor: '#e8e3da',
+      navigationBarTextStyle: 'black',
+      backgroundColor: '#e8e3da'
     })
   : {
-      navigationBarTitleText: '灵频档案',
-      navigationBarBackgroundColor: '#0f172a',
-      navigationBarTextStyle: 'white',
-      backgroundColor: '#0f172a'
+      navigationBarTitleText: '心象盘',
+      navigationBarBackgroundColor: '#e8e3da',
+      navigationBarTextStyle: 'black',
+      backgroundColor: '#e8e3da'
     }

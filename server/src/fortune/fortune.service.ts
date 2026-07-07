@@ -1,5 +1,6 @@
 // 运势生成服务 - NestJS 后端
 import { Injectable } from '@nestjs/common';
+import { sanitizeFortuneFields } from './content-safety';
 
 interface BaziInput {
   yearPillar: string;
@@ -224,7 +225,7 @@ export class FortuneService {
    */
   generateFortune(bazi: BaziInput, date: string): FortuneResult {
     const score = this.generateOverallScore(bazi.fiveElements);
-    return {
+    return sanitizeFortuneFields({
       overallScore: score,
       moodKeyword: this.generateMoodKeyword(),
       summary: this.generateSummary(bazi, score),
@@ -235,6 +236,6 @@ export class FortuneService {
       luckyDirection: this.generateLuckyDirection(bazi.favorableElements),
       actionSuggestion: this.generateActionSuggestion(bazi.favorableElements),
       cyberBlessing: this.generateCyberBlessing(score)
-    };
+    }) as unknown as FortuneResult;
   }
 }

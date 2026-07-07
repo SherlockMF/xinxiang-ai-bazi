@@ -5,16 +5,15 @@ import type { UserProfile, BaziProfile, BaziAnalysisReport } from '../types';
 import { getElementLabel } from '../types';
 import { Network } from '../network';
 import { storage } from './storageAdapter';
-
-// 本地缓存 key
-const ANALYSIS_CACHE_KEY = 'cyber_bazi_analysis';
+import { STORAGE_KEYS, migrateStorageKeysIfNeeded } from './storageService';
 
 /**
  * 读取缓存的深度分析
  */
 export function getCachedAnalysis(userId: string): BaziAnalysisReport | null {
   try {
-    const cache = storage.getItem(ANALYSIS_CACHE_KEY);
+    migrateStorageKeysIfNeeded();
+    const cache = storage.getItem(STORAGE_KEYS.BAZI_ANALYSIS);
     if (!cache) return null;
     const parsed = JSON.parse(cache) as Record<string, BaziAnalysisReport>;
     return parsed[userId] || null;
@@ -28,10 +27,11 @@ export function getCachedAnalysis(userId: string): BaziAnalysisReport | null {
  */
 export function cacheAnalysis(report: BaziAnalysisReport): void {
   try {
-    const cache = storage.getItem(ANALYSIS_CACHE_KEY) || '{}';
+    migrateStorageKeysIfNeeded();
+    const cache = storage.getItem(STORAGE_KEYS.BAZI_ANALYSIS) || '{}';
     const parsed = JSON.parse(cache) as Record<string, BaziAnalysisReport>;
     parsed[report.userId] = report;
-    storage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(parsed));
+    storage.setItem(STORAGE_KEYS.BAZI_ANALYSIS, JSON.stringify(parsed));
   } catch {
     // 缓存失败不影响主流程
   }

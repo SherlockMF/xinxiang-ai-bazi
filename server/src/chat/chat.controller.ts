@@ -1,14 +1,11 @@
-// AI对话控制器 - NestJS 后端
+// AI 问心控制器 - NestJS 后端
+
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ChatService } from './chat.service';
+import type { AskRequest, AskResponse } from './ask.types';
+import { GENERAL_FALLBACK_ANSWER } from './ask-answer.parser';
 
-interface ChatDto {
-  userId: string;
-  question: string;
-  bazi?: Record<string, unknown>;
-  fortune?: Record<string, unknown>;
-  history?: Array<{ role: string; content: string }>;
-}
+const MAX_QUESTION_LENGTH = 200;
 
 @Controller('chat')
 export class ChatController {
@@ -16,48 +13,55 @@ export class ChatController {
 
   @Post('message')
   @HttpCode(HttpStatus.OK)
-  async chatMessage(@Body() body: ChatDto) {
-    const { userId, question, bazi, fortune, history } = body;
+  async chatMessage(@Body() body: AskRequest) {
+    const userId = body.userId || 'local';
+    const question = (body.question || '').trim();
 
-    // 隐私：仅打印非敏感的元信息，不记录用户问题 / 八字 / 运势等内容
-    console.log('[ChatController] 接收到AI对话请求:', {
-      hasUserId: !!userId,
-      questionLength: question?.length ?? 0,
-      hasBazi: !!bazi,
-      hasFortune: !!fortune,
-      historyLength: history?.length ?? 0
+    console.log('[ChatController] 接收到问心请求:', {
+      hasUserId: !!body.userId,
+      questionLength: question.length,
+      questionType: body.questionType,
+      hasBaziLite: !!(body.baziLite || body.bazi),
+      hasDailyXiang: !!(body.dailyXiang || body.fortune),
+      historyLength: body.history?.length ?? 0
     });
-    
-    // 校验必填参数
-    if (!userId || !question) {
+
+    if (!question) {
       return {
         code: 400,
-        msg: '缺少必填参数：userId 或 question',
+        msg: '问题不能为空',
+        data: null
+      };
+    }
+
+    if (question.length > MAX_QUESTION_LENGTH) {
+      return {
+        code: 400,
+        msg: `问题不能超过 ${MAX_QUESTION_LENGTH} 字`,
         data: null
       };
     }
 
     try {
       const result = await this.chatService.generateChatResponse({
+        ...body,
         userId,
-        question,
-        bazi,
-        fortune,
-        history
+        question
       });
-      
-      const message = {
+
+      const message: AskResponse = {
         id: `msg_${Date.now()}_ai`,
         userId,
         role: 'assistant',
         content: result.content,
+        answer: result.answer,
         createdAt: new Date().toISOString()
       };
 
-      // 隐私：仅打印生成结果的元信息，不记录回复正文
-      console.log('[ChatController] AI回复生成成功:', {
+      console.log('[ChatController] 问心回应生成成功:', {
         id: message.id,
-        contentLength: message.content?.length ?? 0
+        source: message.answer.source,
+        riskLevel: message.answer.riskLevel
       });
 
       return {
@@ -66,11 +70,22 @@ export class ChatController {
         data: message
       };
     } catch (error) {
-      console.error('[ChatController] AI回复生成失败:', error);
+      console.error('[ChatController] 问心回应生成失败:', error);
+
+      const fallback = { ...GENERAL_FALLBACK_ANSWER, source: 'fallback' as const };
+      const message: AskResponse = {
+        id: `msg_${Date.now()}_ai_fallback`,
+        userId,
+        role: 'assistant',
+        content: fallback.title,
+        answer: fallback,
+        createdAt: new Date().toISOString()
+      };
+
       return {
-        code: 500,
-        msg: error instanceof Error ? error.message : 'AI回复生成失败',
-        data: null
+        code: 200,
+        msg: 'success',
+        data: message
       };
     }
   }

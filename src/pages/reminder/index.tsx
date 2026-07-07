@@ -1,9 +1,7 @@
-// 提醒设置页 - 管理每日运势提醒
-import { View, Text } from '@tarojs/components';
+// 每日心约页 - 管理每日心象提醒偏好（保留独立页，与本心页设置同步）
+import { View, Text, Picker } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useUserStore, useReminderStore } from '@/stores';
@@ -11,13 +9,9 @@ import './index.css';
 
 const ReminderPage = () => {
   const { baziProfile, loadUserProfile } = useUserStore();
-  const { preference, loadPreference, updateEnabled, updateTime } = useReminderStore();
-  
-  // 时间选项
-  const timeOptions = [
-    '06:00', '07:00', '08:00', '09:00', '10:00',
-    '12:00', '18:00', '20:00', '22:00'
-  ];
+  const { preference, loadPreference, saveSettings } = useReminderStore();
+  const [enabled, setEnabled] = useState(false);
+  const [time, setTime] = useState('08:30');
 
   useEffect(() => {
     loadUserProfile();
@@ -29,114 +23,67 @@ const ReminderPage = () => {
     }
   }, [baziProfile, loadPreference]);
 
-  // 开关变化
-  const handleEnabledChange = (enabled: boolean) => {
-    if (!baziProfile) return;
-    updateEnabled(baziProfile.userId, enabled);
-  };
-
-  // 时间选择
-  const handleTimeChange = (time: string) => {
-    if (!baziProfile) return;
-    updateTime(baziProfile.userId, time);
-  };
+  useEffect(() => {
+    if (preference) {
+      setEnabled(preference.enabled);
+      setTime(preference.time || preference.reminderTime || '08:30');
+    }
+  }, [preference]);
 
   if (!baziProfile) {
     return (
-      <View className="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4">
-        <Text className="block text-lg text-slate-400">请先生成灵频档案</Text>
+      <View className="neu-page min-h-screen flex flex-col justify-center items-center p-4">
+        <Text className="block text-lg neu-muted mb-6 tracking-wide">心象未立，请先填写出生信息</Text>
+        <View className="neu-raised-sm rounded-2xl px-6 py-3" onClick={() => Taro.redirectTo({ url: '/pages/onboarding/birth' })}>
+          <Text className="neu-cyan tracking-wider">填写出生信息</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View className="reminder-container min-h-screen bg-slate-900 p-4 pb-8">
-      {/* 顶部标题 */}
-      <View className="mb-6">
-        <Text className="block text-2xl font-bold text-cyan-400">每日提醒</Text>
-        <Text className="block text-sm text-slate-400 mt-2">设置每日运势提醒时间</Text>
+    <View className="reminder-container neu-page min-h-screen p-5 pb-8">
+      <View className="mb-6 mt-2">
+        <Text className="block text-2xl font-bold neu-cyan tracking-[0.15em]">每日心约</Text>
+        <Text className="block text-sm neu-muted mt-2 tracking-wide">在你习惯的时间，留一刻给今日心象</Text>
       </View>
 
-      {/* 开关卡片 */}
-      <Card className="mb-6 bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-        <CardContent className="p-4">
-          <View className="flex justify-between items-center">
-            <View className="flex-1">
-              <Label className="text-slate-200">开启每日提醒</Label>
-              <Text className="block text-xs text-slate-500 mt-1">
-                当前版本仅保存提醒偏好，暂不发送系统通知
-              </Text>
-            </View>
-            <Switch
-              checked={preference?.enabled || false}
-              onCheckedChange={(checked) => handleEnabledChange(checked)}
-            />
+      <View className="neu-raised rounded-3xl p-5 mb-6">
+        <View className="flex justify-between items-center mb-4">
+          <Label className="neu-fg">开启每日心约</Label>
+          <Switch checked={enabled} onCheckedChange={setEnabled} />
+        </View>
+        {enabled && (
+          <View>
+            <Label className="neu-muted mb-2">提醒时间</Label>
+            <Picker mode="time" value={time} onChange={(e) => setTime(e.detail.value)}>
+              <View className="neu-pressed rounded-2xl px-4 py-3 flex items-center justify-between">
+                <Text className={time ? 'neu-fg' : 'neu-muted'}>{time || '08:30'}</Text>
+                <Text className="neu-muted text-xs">▾</Text>
+              </View>
+            </Picker>
           </View>
-        </CardContent>
-      </Card>
+        )}
+      </View>
 
-      {/* 时间选择 */}
-      {preference?.enabled && (
-        <Card className="mb-6 bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-          <CardContent className="p-4">
-            <Label className="text-slate-200 mb-3">选择提醒时间</Label>
-            <View className="grid grid-cols-3 gap-2 mt-2">
-              {timeOptions.map((time) => (
-                <View 
-                  key={time}
-                  className={`time-option rounded-xl px-4 py-3 text-center cursor-pointer ${
-                    preference?.reminderTime === time 
-                      ? 'bg-cyan-500 bg-opacity-30 border border-cyan-400' 
-                      : 'bg-gray-900 bg-opacity-50 border border-gray-700'
-                  }`}
-                  onClick={() => handleTimeChange(time)}
-                >
-                  <Text className={preference?.reminderTime === time ? 'text-cyan-400' : 'text-slate-300'}>
-                    {time}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 提醒渠道说明 */}
-      <Card className="mb-6 bg-gray-800 bg-opacity-30 border-gray-700">
-        <CardContent className="p-4">
-          <Text className="block text-sm text-slate-400 mb-2">关于提醒</Text>
-          <Text className="block text-xs text-slate-500">
-            当前版本仅在本地保存提醒偏好，暂不发送系统通知。
-          </Text>
-          <Text className="block text-xs text-slate-500 mt-2">
-            微信 / 抖音订阅消息推送将在后续版本接入，届时可凭此偏好按时提醒你查看今日灵频。
-          </Text>
-        </CardContent>
-      </Card>
-
-      {/* 当前设置状态 */}
-      <View className="mt-6 p-4 rounded-xl bg-cyan-500 bg-opacity-10 border border-cyan-400 border-opacity-30">
-        <Text className="block text-sm text-cyan-400">
-          {preference?.enabled
-            ? `已保存提醒偏好，时间：${preference.reminderTime}（暂不发送系统通知）`
-            : '提醒偏好已关闭'}
+      <View className="neu-pressed-sm rounded-2xl p-4 mb-6">
+        <Text className="block text-xs neu-muted leading-relaxed">
+          正式提醒能力将在后续版本接入微信 / 抖音订阅消息，当前仅保存本地偏好。
         </Text>
       </View>
 
-      {/* 返回按钮 */}
-      <Button 
-        onClick={() => Taro.switchTab({ url: '/pages/fortune/today' })}
-        variant="outline"
-        className="w-full mt-6 border-cyan-500 border-opacity-30"
+      <View
+        onClick={() => saveSettings(baziProfile.userId, enabled, time)}
+        className="neu-raised neu-press w-full h-12 rounded-2xl flex items-center justify-center"
       >
-        <Text className="text-cyan-400">返回今日运势</Text>
-      </Button>
+        <Text className="neu-cyan tracking-wide">保存设置</Text>
+      </View>
 
-      {/* 底部说明 */}
-      <View className="mt-6 text-center">
-        <Text className="block text-xs text-slate-500">
-          提醒功能仅供娱乐，不影响实际生活
-        </Text>
+      <View
+        onClick={() => Taro.switchTab({ url: '/pages/me/index' })}
+        className="neu-raised-sm w-full h-11 rounded-2xl flex items-center justify-center mt-4"
+      >
+        <Text className="neu-muted tracking-wide">返回本心</Text>
       </View>
     </View>
   );

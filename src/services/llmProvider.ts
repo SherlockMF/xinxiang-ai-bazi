@@ -48,9 +48,9 @@ class LLMProvider {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // 根据 prompt 类型返回不同 mock 数据
-    if (prompt.includes('运势') || prompt.includes('今日')) {
+    if (prompt.includes('心象') || prompt.includes('今日')) {
       return {
-        content: `这是一个关于运势的 AI 回复。基于你的命盘特点，今天适合保持平和的心态，顺应能量流动。记住，这只是情绪陪伴，不是命运预测。`,
+        content: `这是一个关于今日心象的 AI 回复。基于你的心象特点，今天适合保持平和的心态，顺应气息流动。记住，这只是情绪陪伴，不是状态预测。`,
         raw: { mock: true }
       };
     }
@@ -63,7 +63,7 @@ class LLMProvider {
     }
     
     return {
-      content: `我理解你的问题。基于你的命盘和今日运势，我的建议是：保持觉知，顺应流，不要过度用力。记住，命运不是固定的剧本，你始终拥有选择的空间。这只是情绪陪伴，不是绝对的指导。`,
+      content: `我理解你的问题。基于你的心象盘与今日心象，我的建议是：保持觉知，顺势而行，不要过度用力。生命节律不是固定的剧本，你始终拥有选择的空间。这只是情绪陪伴，不是绝对的指导。`,
       raw: { mock: true }
     };
   }
@@ -115,12 +115,12 @@ class LLMProvider {
     fortune: Record<string, unknown>,
     history: Array<{ role: string; content: string }>
   ): Promise<string> {
-    const systemPrompt = `你是一个赛博风格的东方玄学 AI 陪伴者。你的任务是：
+    const systemPrompt = `你是一位带禅意的东方玄学心象陪伴者，言谈温润含蓄、有传统文化的古意。你的任务是：
 1. 根据用户的八字和运势，温柔地回答问题
-2. 不使用绝对化、恐吓式表述
-3. 以情绪陪伴和行动建议为主
-4. 在回复末尾提醒"这只是娱乐参考"
-5. 保持赛博东方的语言风格`;
+2. 文风带禅味与古意，可化用「心、象、气、月、水、风、云」等自然意象，但自然不晦涩、不堆砌
+3. 不使用绝对化、恐吓式表述
+4. 以情绪陪伴和行动建议为主
+5. 在回复末尾以含蓄方式提醒"所言仅为遣怀清心，非关休咎"`;
 
     const historyText = history.map(h => `${h.role}: ${h.content}`).join('\n');
     const prompt = `用户八字：${JSON.stringify(bazi)}

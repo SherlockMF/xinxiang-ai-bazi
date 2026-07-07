@@ -3,26 +3,28 @@ export default defineAppConfig({
     'pages/index/index',
     'pages/onboarding/birth',
     'pages/profile/bazi',
+    'pages/profiles/index',
     'pages/fortune/today',
     'pages/chat/index',
+    'pages/share/index',
     'pages/favorites/index',
     'pages/reminder/index',
     'pages/me/index'
   ],
   window: {
     backgroundTextStyle: 'dark',
-    navigationBarBackgroundColor: '#0f172a',
-    navigationBarTitleText: '赛博灵频',
-    navigationBarTextStyle: 'white'
+    navigationBarBackgroundColor: '#e8e3da',
+    navigationBarTitleText: '心象',
+    navigationBarTextStyle: 'black'
   },
-  // tabBar：今日运势 / AI 追问 / 收藏 / 我的
+  // tabBar：今日 / 追问 / 签亭 / 我的（收藏已并入「我的」）
   // 注意：tabBar 内的页面只能用 Taro.switchTab 跳转，
-  // 非 tabBar 页面（如 onboarding/birth、profile/bazi、reminder）仍用 navigateTo / redirectTo。
+  // 非 tabBar 页面（如 onboarding/birth、profile/bazi、favorites、reminder）用 navigateTo / redirectTo。
   tabBar: {
-    color: '#64748b',
-    selectedColor: '#22d3ee',
-    backgroundColor: '#0f172a',
-    borderStyle: 'black',
+    color: '#968e7f',
+    selectedColor: '#3f7a78',
+    backgroundColor: '#e8e3da',
+    borderStyle: 'white',
     list: [
       {
         pagePath: 'pages/fortune/today',
@@ -32,19 +34,19 @@ export default defineAppConfig({
       },
       {
         pagePath: 'pages/chat/index',
-        text: '追问',
+        text: '问心',
         iconPath: './assets/tabbar/message-circle.png',
         selectedIconPath: './assets/tabbar/message-circle-active.png'
       },
       {
-        pagePath: 'pages/favorites/index',
-        text: '收藏',
-        iconPath: './assets/tabbar/heart.png',
-        selectedIconPath: './assets/tabbar/heart-active.png'
+        pagePath: 'pages/share/index',
+        text: '签亭',
+        iconPath: './assets/tabbar/scroll.png',
+        selectedIconPath: './assets/tabbar/scroll-active.png'
       },
       {
         pagePath: 'pages/me/index',
-        text: '我的',
+        text: '本心',
         iconPath: './assets/tabbar/user.png',
         selectedIconPath: './assets/tabbar/user-active.png'
       }

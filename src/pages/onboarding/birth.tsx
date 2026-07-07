@@ -1,217 +1,302 @@
-// 出生信息页 - 用户输入出生信息生成八字档案
-import { View, Text } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+// 出生信息页 - 录入生辰生成心象盘
+import { View, Text, Picker } from '@tarojs/components';
+import Taro, { useRouter } from '@tarojs/taro';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUserStore } from '@/stores';
-import type { UserProfile } from '@/types';
+import type { UserProfile, ProfileRelation } from '@/types';
+import { RELATION_LABELS } from '@/types';
+import {
+  getTodayDateString,
+  isFutureBirthDate,
+  timeToBranch
+} from '@/services/birthUtils';
 import './birth.css';
 
+const DEFAULT_BIRTH_DATE = '1998-01-01';
+
 const BirthPage = () => {
-  const { setUserProfile, generateBazi, isLoading, error } = useUserStore();
-  
-  // 表单状态
+  const router = useRouter();
+  const isEditMode = router.params.edit === '1';
+
+  const {
+    addProfile,
+    updateActiveProfile,
+    profiles,
+    userProfile,
+    activeId,
+    loadUserProfile,
+    isLoading,
+    error
+  } = useUserStore();
+
+  const [nickname, setNickname] = useState('');
+  const [relation, setRelation] = useState<ProfileRelation>(profiles.length === 0 ? 'self' : 'family');
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
+  const [unknownTime, setUnknownTime] = useState(false);
   const [gender, setGender] = useState<'male' | 'female' | 'unknown'>('unknown');
   const [birthPlace, setBirthPlace] = useState('');
-  const [privacyConsent, setPrivacyConsent] = useState(false);
-  
-  // 表单校验错误
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const handleGenderChange = (value: 'male' | 'female' | 'unknown') => {
-    setGender(value);
+  const today = getTodayDateString();
+
+  useEffect(() => {
+    loadUserProfile();
+  }, [loadUserProfile]);
+
+  useEffect(() => {
+    if (!isEditMode || !userProfile) return;
+    setNickname(userProfile.nickname || '');
+    setRelation(userProfile.relation || 'self');
+    setBirthDate(userProfile.birthDate || '');
+    setUnknownTime(userProfile.unknownTime ?? false);
+    setBirthTime(userProfile.unknownTime ? '' : (userProfile.birthTime || ''));
+    setGender((userProfile.gender as 'male' | 'female' | 'unknown') || 'unknown');
+    setBirthPlace(userProfile.birthPlace || '');
+    setPrivacyAccepted(userProfile.privacyAccepted ?? userProfile.privacyConsent ?? false);
+  }, [isEditMode, userProfile]);
+
+  const handleUnknownTimeChange = (checked: boolean) => {
+    setUnknownTime(checked);
+    if (checked) {
+      setBirthTime('');
+    }
   };
 
   const handleSubmit = async () => {
-    // 校验必填项
     if (!birthDate) {
-      setFormError('请选择出生日期');
+      setFormError('请选择有效的出生日期');
       return;
     }
-    if (!birthTime) {
-      setFormError('请选择出生时间');
+    if (isFutureBirthDate(birthDate, today)) {
+      setFormError('出生日期不能晚于今天');
       return;
     }
-    if (!privacyConsent) {
-      setFormError('请同意隐私与娱乐声明');
+    if (!unknownTime && !birthTime) {
+      setFormError('请选择出生时间，或勾选「不知道时辰」');
+      return;
+    }
+    if (!privacyAccepted) {
+      setFormError('请先阅读并勾选隐私说明');
       return;
     }
     setFormError('');
 
-    // 创建用户档案
-    const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const now = new Date().toISOString();
+    const timeBranch = unknownTime ? 'unknown' : timeToBranch(birthTime);
+    const acceptedAt = now;
+
     const profile: UserProfile = {
-      id: userId,
+      id: isEditMode && activeId ? activeId : `user_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      nickname: nickname.trim() || RELATION_LABELS[relation],
+      relation,
       gender,
       birthDate,
-      birthTime,
-      birthPlace,
+      birthTime: unknownTime ? undefined : birthTime,
+      timeBranch: unknownTime ? 'unknown' : timeBranch,
+      unknownTime,
+      birthPlace: birthPlace.trim() || undefined,
       calendarType: 'solar',
-      privacyConsent,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      privacyAccepted: true,
+      privacyAcceptedAt: acceptedAt,
+      privacyConsent: true,
+      createdAt: isEditMode && userProfile?.createdAt ? userProfile.createdAt : now,
+      updatedAt: now
     };
 
     try {
-      // 保存用户档案
-      setUserProfile(profile);
-      
-      // 生成八字档案
-      await generateBazi(profile);
-      
-      // 跳转到八字档案页
-      Taro.redirectTo({ url: '/pages/profile/bazi' });
+      if (isEditMode && activeId) {
+        await updateActiveProfile(profile);
+      } else {
+        await addProfile(profile);
+      }
+      Taro.switchTab({ url: '/pages/fortune/today' });
     } catch (err) {
-      console.error('生成八字失败:', err);
-      setFormError('生成八字档案失败，请重试');
+      console.error('排盘失败:', err);
+      setFormError('排盘失败，请重试');
     }
   };
 
+  const RELATIONS: ProfileRelation[] = ['self', 'family', 'friend', 'other'];
+
+  const genderAccent = (g: typeof gender, active: boolean) => {
+    if (!active) return 'neu-muted';
+    return g === 'female' ? 'neu-pink' : g === 'unknown' ? 'neu-purple' : 'neu-cyan';
+  };
+
   return (
-    <View className="birth-container min-h-screen bg-slate-900 p-4">
-      {/* 顶部标题 */}
-      <View className="mb-6">
-        <Text className="block text-2xl font-bold text-cyan-400">输入出生信息</Text>
-        <Text className="block text-sm text-slate-400 mt-2">生成你的专属灵频档案</Text>
+    <View className="birth-container neu-page min-h-screen p-5">
+      <View className="mb-6 mt-2">
+        <Text className="block text-2xl font-bold neu-cyan tracking-[0.15em]">填写出生信息</Text>
+        <Text className="block text-sm neu-muted mt-2 tracking-wide">
+          {isEditMode
+            ? '更新出生信息后，今日心象将重新生成'
+            : profiles.length === 0
+              ? '依你的生辰，生成专属心象'
+              : '为这位本心生成专属心象'}
+        </Text>
       </View>
 
-      {/* 出生日期 */}
-      <Card className="mb-4 bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-        <CardContent className="p-4">
-          <Label className="text-slate-300 mb-2">出生日期 *</Label>
-          <View className="bg-gray-900 bg-opacity-50 rounded-xl px-4 py-3 mt-2">
-            {/* MVP 版本：使用输入框，后续可改为 Picker */}
-            <Input
-              className="w-full bg-transparent text-cyan-400 placeholder-slate-500"
-              placeholderStyle="color: #64748b"
-              placeholder="格式：1990-01-15"
-              value={birthDate}
-              onInput={(e) => setBirthDate(e.detail.value)}
-              type="text"
-            />
+      {!isEditMode && (
+        <>
+          <View className="neu-raised rounded-3xl p-5 mb-4">
+            <Label className="neu-muted mb-2">称呼</Label>
+            <View className="neu-pressed rounded-2xl px-4 py-3 mt-2">
+              <Input
+                className="w-full bg-transparent neu-fg"
+                placeholderStyle="color: #aaa39597"
+                placeholder="如：我自己 / 阿妈 / 阿明（留空则按关系）"
+                value={nickname}
+                onInput={(e) => setNickname(e.detail.value)}
+                type="text"
+              />
+            </View>
           </View>
-        </CardContent>
-      </Card>
 
-      {/* 出生时间 */}
-      <Card className="mb-4 bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-        <CardContent className="p-4">
-          <Label className="text-slate-300 mb-2">出生时间 *</Label>
-          <View className="bg-gray-900 bg-opacity-50 rounded-xl px-4 py-3 mt-2">
-            <Input
-              className="w-full bg-transparent text-cyan-400 placeholder-slate-500"
-              placeholderStyle="color: #64748b"
-              placeholder="格式：14:30"
-              value={birthTime}
-              onInput={(e) => setBirthTime(e.detail.value)}
-              type="text"
-            />
+          <View className="neu-raised rounded-3xl p-5 mb-4">
+            <Label className="neu-muted mb-2">关系</Label>
+            <View className="grid grid-cols-4 gap-3 mt-2">
+              {RELATIONS.map((r) => {
+                const active = relation === r;
+                return (
+                  <View
+                    key={r}
+                    className={`rounded-2xl px-2 py-3 text-center ${active ? 'neu-pressed' : 'neu-raised-sm'}`}
+                    onClick={() => setRelation(r)}
+                  >
+                    <Text className={active ? 'neu-cyan' : 'neu-muted'}>{RELATION_LABELS[r]}</Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
-          <Text className="block text-xs text-slate-500 mt-2">
-            时间用于计算时柱，不知道可以填写中午12:00
+        </>
+      )}
+
+      <View className="neu-raised rounded-3xl p-5 mb-4">
+        <Label className="neu-muted mb-2">出生日期</Label>
+        <Text className="block text-xs neu-muted mb-2">日历类型：公历</Text>
+        <Picker
+          mode="date"
+          value={birthDate || DEFAULT_BIRTH_DATE}
+          start="1900-01-01"
+          end={today}
+          onChange={(e) => setBirthDate(e.detail.value)}
+        >
+          <View className="neu-pressed rounded-2xl px-4 py-3 mt-1 flex items-center justify-between">
+            <Text className={birthDate ? 'neu-fg' : 'neu-muted'}>
+              {birthDate || '请选择出生日期'}
+            </Text>
+            <Text className="neu-muted text-xs">▾</Text>
+          </View>
+        </Picker>
+        <Text className="block text-xs neu-muted mt-2 opacity-80">
+          当前先支持公历出生日期，后续将补充农历输入。
+        </Text>
+      </View>
+
+      <View className="neu-raised rounded-3xl p-5 mb-4">
+        <Label className="neu-muted mb-2">出生时间</Label>
+        {!unknownTime && (
+          <Picker
+            mode="time"
+            value={birthTime || '12:00'}
+            onChange={(e) => setBirthTime(e.detail.value)}
+          >
+            <View className="neu-pressed rounded-2xl px-4 py-3 mt-2 flex items-center justify-between">
+              <Text className={birthTime ? 'neu-fg' : 'neu-muted'}>
+                {birthTime || '请选择出生时间'}
+              </Text>
+              <Text className="neu-muted text-xs">▾</Text>
+            </View>
+          </Picker>
+        )}
+        {unknownTime && (
+          <View className="neu-pressed rounded-2xl px-4 py-3 mt-2">
+            <Text className="neu-muted">未填写出生时辰</Text>
+          </View>
+        )}
+        <View className="flex items-start gap-3 mt-3">
+          <Checkbox
+            checked={unknownTime}
+            onCheckedChange={handleUnknownTimeChange}
+          />
+          <Text className="text-sm neu-fg flex-1">我不知道出生时间</Text>
+        </View>
+        {unknownTime && (
+          <Text className="block text-xs neu-muted mt-2 leading-relaxed">
+            心象盘会以出生日期为主生成，部分个性化内容会相对简化。
           </Text>
-        </CardContent>
-      </Card>
-
-      {/* 性别（可选） */}
-      <Card className="mb-4 bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-        <CardContent className="p-4">
-          <Label className="text-slate-300 mb-2">性别（可选）</Label>
-          <View className="flex gap-4 mt-2">
-            <View 
-              className={`flex-1 rounded-xl px-4 py-3 text-center ${gender === 'male' ? 'bg-cyan-500 bg-opacity-30 border border-cyan-400' : 'bg-gray-900 bg-opacity-50'}`}
-              onClick={() => handleGenderChange('male')}
-            >
-              <Text className={gender === 'male' ? 'text-cyan-400' : 'text-slate-400'}>男</Text>
-            </View>
-            <View 
-              className={`flex-1 rounded-xl px-4 py-3 text-center ${gender === 'female' ? 'bg-pink-500 bg-opacity-30 border border-pink-400' : 'bg-gray-900 bg-opacity-50'}`}
-              onClick={() => handleGenderChange('female')}
-            >
-              <Text className={gender === 'female' ? 'text-pink-400' : 'text-slate-400'}>女</Text>
-            </View>
-            <View 
-              className={`flex-1 rounded-xl px-4 py-3 text-center ${gender === 'unknown' ? 'bg-purple-500 bg-opacity-30 border border-purple-400' : 'bg-gray-900 bg-opacity-50'}`}
-              onClick={() => handleGenderChange('unknown')}
-            >
-              <Text className={gender === 'unknown' ? 'text-purple-400' : 'text-slate-400'}>不详</Text>
-            </View>
-          </View>
-        </CardContent>
-      </Card>
-
-      {/* 出生地（可选） */}
-      <Card className="mb-4 bg-gray-800 bg-opacity-50 border-cyan-500 border-opacity-20">
-        <CardContent className="p-4">
-          <Label className="text-slate-300 mb-2">出生地（可选）</Label>
-          <View className="bg-gray-900 bg-opacity-50 rounded-xl px-4 py-3 mt-2">
-            <Input
-              className="w-full bg-transparent text-cyan-400 placeholder-slate-500"
-              placeholderStyle="color: #64748b"
-              placeholder="如：北京"
-              value={birthPlace}
-              onInput={(e) => setBirthPlace(e.detail.value)}
-            />
-          </View>
-        </CardContent>
-      </Card>
-
-      {/* 历法类型说明 */}
-      <View className="mb-4 p-4 rounded-xl bg-gray-800 bg-opacity-30">
-        <Text className="block text-sm text-slate-400">
-          历法类型：公历（默认）
-        </Text>
-        <Text className="block text-xs text-slate-500 mt-1">
-          MVP版本暂只支持公历，农历将在后续版本上线
-        </Text>
+        )}
       </View>
 
-      {/* 隐私声明 */}
-      <View className="mb-4 p-4 rounded-xl bg-gray-800 bg-opacity-30">
+      <View className="neu-raised rounded-3xl p-5 mb-4">
+        <Label className="neu-muted mb-2">性别（可选）</Label>
+        <View className="flex gap-3 mt-2">
+          {([['male', '男'], ['female', '女'], ['unknown', '不详']] as const).map(([val, txt]) => {
+            const active = gender === val;
+            return (
+              <View
+                key={val}
+                className={`flex-1 rounded-2xl px-4 py-3 text-center ${active ? 'neu-pressed' : 'neu-raised-sm'}`}
+                onClick={() => setGender(val)}
+              >
+                <Text className={genderAccent(val, active)}>{txt}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
+      <View className="neu-raised rounded-3xl p-5 mb-4">
+        <Label className="neu-muted mb-2">出生地（可选）</Label>
+        <View className="neu-pressed rounded-2xl px-4 py-3 mt-2">
+          <Input
+            className="w-full bg-transparent neu-fg"
+            placeholderStyle="color: #aaa39597"
+            placeholder="如：北京"
+            value={birthPlace}
+            onInput={(e) => setBirthPlace(e.detail.value)}
+          />
+        </View>
+      </View>
+
+      <View className="neu-pressed-sm rounded-2xl p-4 mb-4">
         <View className="flex items-start gap-3">
           <Checkbox
-            checked={privacyConsent}
-            onCheckedChange={(checked) => setPrivacyConsent(checked)}
+            checked={privacyAccepted}
+            onCheckedChange={(checked) => setPrivacyAccepted(checked)}
           />
           <View className="flex-1">
-            <Text className="block text-sm text-slate-300">
-              我已阅读并同意隐私与娱乐声明
-            </Text>
-            <Text className="block text-xs text-slate-500 mt-1">
-              本产品内容仅供娱乐与情绪陪伴，不构成任何现实决策建议。出生信息与八字档案默认仅存储在本地设备。使用「AI 追问」功能时，问题、八字摘要与今日运势会发送至服务端用于生成回复。
+            <Text className="block text-sm neu-fg leading-relaxed">
+              我已了解并同意：基础信息将用于生成个人心象内容；使用 AI 问心时，系统会上传必要的心象摘要与问题内容，用于生成回应。内容仅作传统文化与自我观察参考。
             </Text>
           </View>
         </View>
       </View>
 
-      {/* 错误提示 */}
       {(formError || error) && (
-        <View className="mb-4 p-4 rounded-xl bg-red-500 bg-opacity-20 border border-red-400 border-opacity-30">
-          <Text className="block text-sm text-red-400">{formError || error}</Text>
+        <View className="neu-pressed-sm rounded-2xl p-4 mb-4">
+          <Text className="block text-sm neu-pink">{formError || error}</Text>
         </View>
       )}
 
-      {/* 提交按钮 */}
-      <Button
-        onClick={handleSubmit}
-        disabled={isLoading}
-        className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl border-0 mt-4"
+      <View
+        className={`neu-raised neu-press w-full h-14 rounded-2xl flex items-center justify-center mt-4 ${isLoading ? 'opacity-60' : ''}`}
+        onClick={() => { if (!isLoading) handleSubmit(); }}
       >
-        <Text className="block text-lg font-medium text-white">
-          {isLoading ? '正在生成...' : '生成我的灵频档案'}
+        <Text className="block text-lg font-medium neu-cyan tracking-[0.2em]">
+          {isLoading ? '正在生成…' : isEditMode ? '保存并更新心象' : '生成我的心象'}
         </Text>
-      </Button>
+      </View>
 
-      {/* 底部说明 */}
       <View className="mt-6 text-center">
-        <Text className="block text-xs text-slate-500">
-          八字档案基于传统算法生成，仅供娱乐参考
+        <Text className="block text-xs neu-muted">
+          心象依出生信息生成，仅作自我观察与情绪陪伴
         </Text>
       </View>
     </View>

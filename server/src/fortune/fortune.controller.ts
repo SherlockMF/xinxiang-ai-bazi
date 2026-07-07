@@ -24,7 +24,13 @@ export class FortuneController {
   @Post('generate')
   @HttpCode(HttpStatus.OK)
   generateFortune(@Body() body: GenerateFortuneDto) {
-    console.log('[FortuneController] 接收到运势生成请求:', body);
+    console.log('[FortuneController] 接收到运势生成请求:', {
+      hasUserId: !!body?.userId,
+      hasDate: !!body?.date,
+      hasBazi: !!body?.bazi,
+      hasDayMaster: !!body?.bazi?.dayMaster,
+      favorableElementCount: body?.bazi?.favorableElements?.length ?? 0
+    });
     
     const { userId, date, bazi } = body;
     
@@ -48,7 +54,13 @@ export class FortuneController {
         createdAt: new Date().toISOString()
       };
 
-      console.log('[FortuneController] 运势生成成功:', fortuneProfile);
+      console.log('[FortuneController] 运势生成成功:', {
+        id: fortuneProfile.id,
+        hasUserId: !!fortuneProfile.userId,
+        date: fortuneProfile.date,
+        yiCount: fortuneProfile.yi?.length ?? 0,
+        jiCount: fortuneProfile.ji?.length ?? 0
+      });
 
       return {
         code: 200,

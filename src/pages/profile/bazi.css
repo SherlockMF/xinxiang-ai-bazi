@@ -1,21 +1,3 @@
 .bazi-container {
   position: relative;
 }
-
-.pillar-cell {
-  position: relative;
-}
-
-.pillar-cell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 10px rgba(34, 211, 238, 0.1);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.pillar-cell:hover::after {
-  opacity: 1;
-}

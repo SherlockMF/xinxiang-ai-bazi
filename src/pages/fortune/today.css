@@ -2,15 +2,22 @@
   position: relative;
 }
 
-.score-ring {
-  animation: pulse-glow 3s ease-in-out infinite;
+/* 分数环：外圈凹陷槽，内芯凸起，营造"嵌在面板里"的质感 */
+.score-track {
+  background-color: var(--neu-bg);
+  box-shadow:
+    inset 6px 6px 12px var(--neu-dark),
+    inset -6px -6px 12px var(--neu-light);
 }
 
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(34, 211, 238, 0.5);
-  }
+.score-core {
+  background-color: var(--neu-bg);
+  box-shadow:
+    5px 5px 10px var(--neu-dark),
+    -5px -5px 10px var(--neu-light);
+}
+
+/* 宜忌芯片按压态过渡 */
+.neu-chip {
+  transition: box-shadow 0.18s ease-out;
 }

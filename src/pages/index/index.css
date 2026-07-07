@@ -3,38 +3,13 @@
   overflow: hidden;
 }
 
-.bg-gradient-cyber {
-  background: linear-gradient(
-    135deg,
-    rgba(34, 211, 238, 0.1) 0%,
-    rgba(168, 85, 247, 0.1) 50%,
-    rgba(236, 72, 153, 0.1) 100%
-  );
-  background-size: 200% 200%;
-  animation: gradient-shift 8s ease infinite;
+/* 按钮按压态：从凸起切换到凹陷，模拟实体按键被按下 */
+.neu-press {
+  transition: box-shadow 0.15s ease-out;
 }
 
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.5;
-  }
+.neu-press:active {
+  box-shadow:
+    inset 5px 5px 10px var(--neu-dark),
+    inset -5px -5px 10px var(--neu-light);
 }

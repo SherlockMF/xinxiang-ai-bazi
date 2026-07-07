@@ -1,63 +1,73 @@
-// 欢迎页 - 赛博灵频启动入口
+// 欢迎页 - 心象启动入口（固定首页：首次去录入生辰，已有本心则直入今日心象）
 import { View, Text } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import Taro, { useDidShow } from '@tarojs/taro';
+import { useState } from 'react';
+import { getProfiles, migrateLegacyProfileIfNeeded } from '@/services/storageService';
 import './index.css';
 
 const IndexPage = () => {
+  // 是否已有本心（已填过生辰）
+  const [hasProfile, setHasProfile] = useState(false);
+
+  // 每次显示时检查本地是否已有本心（含旧数据迁移）
+  useDidShow(() => {
+    migrateLegacyProfileIfNeeded();
+    setHasProfile(getProfiles().length > 0);
+  });
+
   const handleStartScan = () => {
-    console.log('[欢迎页] 按钮点击触发');
-    // 直接跳转到出生信息页
-    Taro.navigateTo({ url: '/pages/onboarding/birth' });
+    if (hasProfile) {
+      // 已填过生辰：直接进入今日心象（tabBar 页用 switchTab）
+      Taro.switchTab({ url: '/pages/fortune/today' });
+    } else {
+      // 首次：去录入生辰
+      Taro.navigateTo({ url: '/pages/onboarding/birth' });
+    }
   };
 
   return (
-    <View className="welcome-container min-h-screen bg-slate-900 flex flex-col justify-between items-center p-6">
-      {/* 背景渐变网格 - pointerEvents-none 确保不阻挡点击 */}
-      <View className="absolute inset-0 bg-gradient-cyber opacity-20 pointer-events-none" />
-      
-      {/* 顶部装饰 */}
-      <View className="w-full flex justify-center pt-8">
-        <View className="relative">
-          {/* 霓虹光晕效果 */}
-          <View className="absolute -inset-4 bg-cyan-500 bg-opacity-30 rounded-full blur-xl animate-pulse-slow" />
-          {/* 标题 */}
-          <Text className="block text-5xl font-bold text-cyan-400 tracking-wider relative z-10">
-            赛博灵频
+    <View className="welcome-container neu-page min-h-screen flex flex-col justify-between items-center p-6">
+      {/* 顶部标题：凸起圆盘 + 内嵌文字 */}
+      <View className="w-full flex flex-col items-center pt-16 gap-3">
+        <View className="neu-raised rounded-3xl px-10 py-6">
+          <Text className="block text-5xl font-bold neu-cyan tracking-widest">
+            心　象
           </Text>
         </View>
+        <Text className="block text-sm neu-muted tracking-[0.4em]">叩问天地 · 静观自心</Text>
       </View>
 
       {/* 中间 Slogan */}
-      <View className="flex flex-col items-center gap-4 mt-20">
-        <Text className="block text-xl text-slate-300 text-center tracking-wide">
-          在霓虹与命盘之间
+      <View className="flex flex-col items-center gap-4">
+        <Text className="block text-xl neu-fg text-center tracking-widest">
+          天地有大美而不言
         </Text>
-        <Text className="block text-xl text-pink-400 text-center tracking-wide">
-          接收今日灵频
+        <Text className="block text-xl neu-pink text-center tracking-widest">
+          且静候今日心象
         </Text>
-        
-        {/* 装饰线条 */}
-        <View className="w-32 h-1 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-400 mt-4" />
+
+        {/* 装饰线条：凹陷细槽 */}
+        <View className="neu-pressed-sm w-32 h-2 rounded-full mt-4" />
       </View>
 
       {/* 底部按钮和声明 */}
-      <View className="w-full flex flex-col gap-6 mt-8 pb-8">
-        {/* 启动按钮 - 使用多种事件确保点击生效 */}
-        <View 
+      <View className="w-full flex flex-col gap-8 pb-10">
+        {/* 启动按钮：凸起药丸，按压时下陷 */}
+        <View
           onClick={handleStartScan}
           onTap={handleStartScan}
           onTouchEnd={handleStartScan}
-          className="w-full h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full shadow-lg flex items-center justify-center active:opacity-80"
+          className="neu-raised neu-press w-full h-14 rounded-full flex items-center justify-center"
           style={{ cursor: 'pointer', touchAction: 'manipulation' }}
         >
-          <Text className="block text-lg font-medium text-white">
-            启动灵频扫描
+          <Text className="block text-lg font-medium neu-cyan tracking-[0.3em]">
+            {hasProfile ? '进入今日心象' : '叩问今日心象'}
           </Text>
         </View>
 
         {/* 免责声明 */}
-        <Text className="block text-xs text-slate-500 text-center leading-relaxed">
-          内容仅供娱乐、情绪陪伴与自我觉察{'\n'}不构成现实决策建议
+        <Text className="block text-xs neu-muted text-center leading-relaxed tracking-wide">
+          所言皆为遣怀清心之趣{'\n'}非关休咎，不作决断之凭
         </Text>
       </View>
     </View>

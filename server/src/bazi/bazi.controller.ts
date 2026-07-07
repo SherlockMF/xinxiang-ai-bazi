@@ -2,7 +2,7 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { BaziService } from './bazi.service';
 import { BaziAnalysisService } from './bazi-analysis.service';
-import type { AnalysisInput } from './bazi-analysis.prompt';
+import type { AnalysisInput, MomentInput } from './bazi-analysis.prompt';
 
 interface GenerateBaziDto {
   birthDate: string;
@@ -11,6 +11,10 @@ interface GenerateBaziDto {
 }
 
 interface AnalyzeBaziDto extends AnalysisInput {
+  userId?: string;
+}
+
+interface MomentBaziDto extends MomentInput {
   userId?: string;
 }
 
@@ -24,7 +28,11 @@ export class BaziController {
   @Post('generate')
   @HttpCode(HttpStatus.OK)
   generateBazi(@Body() body: GenerateBaziDto) {
-    console.log('[BaziController] 接收到八字生成请求:', body);
+    console.log('[BaziController] 接收到八字生成请求:', {
+      hasBirthDate: !!body?.birthDate,
+      hasBirthTime: !!body?.birthTime,
+      hasUserId: !!body?.userId
+    });
     
     const { birthDate, birthTime, userId } = body;
     
@@ -48,7 +56,11 @@ export class BaziController {
         updatedAt: new Date().toISOString()
       };
 
-      console.log('[BaziController] 八字生成成功:', baziProfile);
+      console.log('[BaziController] 八字生成成功:', {
+        id: baziProfile.id,
+        hasUserId: !!baziProfile.userId,
+        hasDayMaster: !!baziProfile.dayMaster
+      });
 
       return {
         code: 200,
@@ -105,6 +117,48 @@ export class BaziController {
       return {
         code: 500,
         msg: error instanceof Error ? error.message : '深度分析生成失败',
+        data: null
+      };
+    }
+  }
+
+  /**
+   * 此刻心象解读（接入 LLM，基于此刻流时四柱 × 本命）
+   */
+  @Post('moment')
+  @HttpCode(HttpStatus.OK)
+  async momentBazi(@Body() body: MomentBaziDto) {
+    console.log('[BaziController] 接收到此刻解读请求:', {
+      momentTime: body?.momentTime || 'unknown',
+      hasMoment: !!body?.moment,
+      hasNatal: !!body?.natal
+    });
+
+    // 校验：至少要有此刻流时与本命日主
+    if (!body?.moment || !body?.natal || !body.natal.dayMaster) {
+      return {
+        code: 400,
+        msg: '缺少必填参数：moment 或 natal.dayMaster',
+        data: null
+      };
+    }
+
+    try {
+      const result = await this.baziAnalysisService.generateMomentAnalysis(body);
+
+      return {
+        code: 200,
+        msg: 'success',
+        data: {
+          content: result.content,
+          createdAt: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('[BaziController] 此刻解读生成失败:', error);
+      return {
+        code: 500,
+        msg: error instanceof Error ? error.message : '此刻解读生成失败',
         data: null
       };
     }

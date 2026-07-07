@@ -1,5 +1,5 @@
 import * as React from "react"
-import { View } from "@tarojs/components"
+import { Button as TaroButton, View } from "@tarojs/components"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
@@ -39,17 +39,33 @@ export interface ButtonProps
   asChild?: boolean
   disabled?: boolean
   className?: string
+  openType?: React.ComponentPropsWithoutRef<typeof TaroButton>["openType"]
 }
 
 const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
-  ({ className, variant, size, asChild = false, disabled, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, disabled, openType, ...props }, ref) => {
     const tabIndex = (props as { tabIndex?: number }).tabIndex ?? (disabled ? -1 : 0)
+    const buttonClassName = cn(
+      buttonVariants({ variant, size, className }),
+      disabled && "opacity-50 pointer-events-none"
+    )
+
+    if (openType) {
+      return (
+        <TaroButton
+          className={buttonClassName}
+          disabled={disabled}
+          openType={openType}
+          ref={ref as React.Ref<React.ElementRef<typeof TaroButton>>}
+          {...({ tabIndex } as { tabIndex?: number })}
+          {...(props as React.ComponentPropsWithoutRef<typeof TaroButton>)}
+        />
+      )
+    }
+
     return (
       <View
-        className={cn(
-          buttonVariants({ variant, size, className }),
-          disabled && "opacity-50 pointer-events-none"
-        )}
+        className={buttonClassName}
         ref={ref}
         {...({ tabIndex } as { tabIndex?: number })}
         hoverClass={
