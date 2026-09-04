@@ -1,7 +1,8 @@
 # 心象 · 第一轮 MVP 现状交接文档
 
 > 更新日期：2026-09-04  
-> 分支：`fix/bugfixes-and-ai-bazi-analysis`  
+> 仓库：https://github.com/SherlockMF/cyber-spirit-xuanxue （private）  
+> 继续开发请拉：`fix/bugfixes-and-ai-bazi-analysis`（含第一轮 MVP 全量；`main` 较旧）  
 > 用途：换电脑继续开发前的状态快照
 
 ---
@@ -151,7 +152,14 @@ xinxiang_daily_xiang_history
 
 ## 9. 换电脑接手清单
 
-1. `git clone` 本仓库，切到 `fix/bugfixes-and-ai-bazi-analysis`（或合并后的目标分支）
+1. Clone 并切到 MVP 分支：
+
+```bash
+git clone https://github.com/SherlockMF/cyber-spirit-xuanxue.git
+cd cyber-spirit-xuanxue
+git checkout fix/bugfixes-and-ai-bazi-analysis
+```
+
 2. `pnpm install`
 3. 配置 `server/.env`（参考 `.env.example`）
 4. `pnpm tsc` 确认类型通过
