@@ -21,8 +21,18 @@
 - [x] 根 package.json 增加统一入口；pnpm-workspace.yaml 和锁文件 importer 对应新路径；小程序内的脚本只管理自身；修正开发工具与 Coze 路径。
 - [x] 重写根 README、补齐各应用入口说明和结构迁移说明；更新名称、简介、关键词、部署路径与技能来源说明。
 - [x] 执行 web 测试/构建、miniapp 测试/类型检查/三端构建、server 构建；核对无旧路径、无敏感文件进入 Git。
-- [ ] 更新 GitHub 名称/简介/topics、origin 地址，提交并同步已验证的目录与文档，核对远端默认分支内容与公开状态。
+- [x] 更新 GitHub 名称/简介/topics、origin 地址，提交并同步已验证的目录与文档，核对远端默认分支内容与公开状态。
 
 ## Verification Commands
 
 在新根目录运行 `pnpm test`、`pnpm typecheck`、`pnpm build`、`git diff --check`。单独核对 `pnpm -C apps/web install --frozen-lockfile` 与根 workspace 的冻结安装；网页开发入口继续使用本地 4173 端口验收。
+
+## 实际验证与交付
+
+- 根 workspace 与独立网页均完成冻结锁文件安装。
+- 网页 16 项测试、小程序文字时序 4 项测试通过；离线源码体积与既有 ZIP 大小校验通过。
+- `pnpm validate` 通过；分别执行 web、h5、weapp、tt、server 构建，全部通过。保留工具链原有 Browserslist 与抖音 RootPortal 警告。
+- 更新后的 Coze shell 脚本语法检查通过；8 份当前入口文档的本地链接全部有效。
+- 历史及暂存差异的凭证形态扫描未检出问题；历史 `key/private.appid.key` 只有一个 0 字节占位对象，不含密钥材料。
+- GitHub 仓库已改为 `SherlockMF/xinxiang-ai-bazi`，可见性 public，12 个检索主题；匿名读取新 README 返回 HTTP 200。
+- 本地旧 `projects/web` 仅剩空目录，仍被打开的系统进程占用，未强制关闭用户进程。源码与 Git 根目录已完成迁移。
