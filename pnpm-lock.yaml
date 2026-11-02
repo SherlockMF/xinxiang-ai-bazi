@@ -12,6 +12,12 @@ patchedDependencies:
 importers:
 
   .:
+    devDependencies:
+      concurrently:
+        specifier: ^9.2.1
+        version: 9.2.1
+
+  apps/miniapp:
     dependencies:
       '@babel/runtime':
         specifier: ^7.24.4
@@ -180,7 +186,7 @@ importers:
         specifier: ^4.10.3
         version: 4.10.3(tailwindcss@4.1.18)
 
-  server:
+  apps/server:
     dependencies:
       '@aws-sdk/client-s3':
         specifier: ^3.958.0
@@ -200,9 +206,6 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.95.3
         version: 2.95.3
-      coze-coding-dev-sdk:
-        specifier: ^0.7.24
-        version: 0.7.24(openai@6.42.0(ws@8.19.0)(zod@4.3.5))(ws@8.19.0)
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3

@@ -1,2 +1,7 @@
 packages:
-  - 'server'
+  - 'apps/miniapp'
+  - 'apps/server'
+
+# apps/web keeps its own workspace and lockfile for standalone deployment.
+patchedDependencies:
+  '@tarojs/plugin-mini-ci@4.1.9': patches/@tarojs__plugin-mini-ci@4.1.9.patch

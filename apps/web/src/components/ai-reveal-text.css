@@ -1,0 +1,34 @@
+.ai-reveal-chunk {
+  display: inline-block;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  vertical-align: baseline;
+  animation: ai-ink-emerge 900ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes ai-ink-emerge {
+  from {
+    opacity: 0;
+    filter: blur(0.14em);
+    transform: translateY(0.22em);
+  }
+  55% {
+    opacity: 0.7;
+    filter: blur(0.035em);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-reveal-chunk {
+    animation: none !important;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}

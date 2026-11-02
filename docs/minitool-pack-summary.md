@@ -1,15 +1,15 @@
 # 小工具校验与打包摘要（minitool-zip-builder 1.6.0）
 
-日期：2026-09-05  
-Skill：`.claude/minitool-zip-builder/`（自官方 skill 安装）
+原打包日期：2026-09-05；目录说明更新：2026-11-02
+Skill：`skills/minitool-zip-builder/`（自官方 skill 安装）
 
 ## 产物
 
 | 项 | 路径 |
 | --- | --- |
-| 可上传 zip | `E:\0-vibe coding\cyber-spirit-xuanxue\xinxiang-minitool.zip` |
-| 解压预览目录 | `E:\0-vibe coding\cyber-spirit-xuanxue\dist-minitool\` |
-| 源码目录 | `E:\0-vibe coding\cyber-spirit-xuanxue\offline\` |
+| 可上传 zip | `artifacts/xinxiang-minitool.zip` |
+| 解压预览目录 | `output/dist-minitool/（按需解压，不纳入 Git）` |
+| 源码目录 | `apps/offline/` |
 
 - zip 大小：**约 0.10 MiB**（远低于建议 2 MiB / 硬限 10 MiB）
 - 入口：`index.html` 在 zip **根目录**（未多套一层文件夹）
@@ -17,10 +17,12 @@ Skill：`.claude/minitool-zip-builder/`（自官方 skill 安装）
 
 ## 审计脚本
 
+命令按新目录整理；下方原有 PASS 记录属于原打包验收。Node 脚本对 ZIP 仅检查体积，不代表真机测试。
+
 ```
-node .claude/minitool-zip-builder/scripts/audit_artifact.mjs dist-minitool  → PASS
-node .claude/minitool-zip-builder/scripts/audit_artifact.mjs xinxiang-minitool.zip → PASS
-python audit_artifact.py xinxiang-minitool.zip → PASS
+node skills/minitool-zip-builder/scripts/audit_artifact.mjs apps/offline  → PASS
+node skills/minitool-zip-builder/scripts/audit_artifact.mjs artifacts/xinxiang-minitool.zip → PASS
+python skills/minitool-zip-builder/scripts/audit_artifact.py artifacts/xinxiang-minitool.zip → PASS
 ```
 
 ## 本轮按规范修复

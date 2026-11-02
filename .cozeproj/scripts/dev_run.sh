@@ -65,10 +65,10 @@ cleanup_previous_run() {
     echo "🧹 Cleaning up any orphaned dev processes..."
     local patterns=(
         "pnpm dev"
-        "concurrently.*dev:web.*dev:server"
+        "concurrently.*dev:h5.*dev:server"
         "nest start --watch"
         "taro build --type h5 --watch"
-        "node --enable-source-maps.*/workspace/projects/server/dist/main"
+        "node --enable-source-maps.*/apps/server/dist/main"
         "esbuild --service.*--ping"
     )
     for pattern in "${patterns[@]}"; do
@@ -90,12 +90,13 @@ cleanup_previous_run() {
 # ---------------------------------------------------------
 echo "📦 Installing dependencies..."
 pnpm install
+pnpm install:web
 echo "✅ Dependencies installed successfully!"
 
 # ---------------------------------------------------------
 # 3. 清理旧进程 + 端口
 # ---------------------------------------------------------
-SERVER_PORT=3000
+export SERVER_PORT=3100
 
 cleanup_previous_run
 
@@ -125,7 +126,7 @@ start_service() {
     # 动态注入环境变量
     if [ -n "${COZE_PROJECT_DOMAIN_DEFAULT:-}" ]; then
         export PROJECT_DOMAIN="$COZE_PROJECT_DOMAIN_DEFAULT"
-        echo "✅ 环境变量已动态注入: PROJECT_DOMAIN=$PROJECT_DOMAIN"
+        echo "✅ PROJECT_DOMAIN 已动态注入"
     else
         echo "⚠️  警告: COZE_PROJECT_DOMAIN_DEFAULT 未设置，使用 .env.local 中的配置"
     fi
@@ -138,7 +139,7 @@ start_service() {
     mkdir -p /tmp/coze-logs
 
     # 后台启动并记录 PID
-    pnpm dev 2>&1 | tee /tmp/coze-logs/dev.log &
+    pnpm dev:legacy 2>&1 | tee /tmp/coze-logs/dev.log &
     local dev_pid=$!
     echo "${dev_pid}" > "${PID_FILE}"
     echo "📝 Dev process started with PID: ${dev_pid} (saved to ${PID_FILE})"

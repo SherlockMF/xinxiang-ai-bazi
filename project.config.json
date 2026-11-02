@@ -1,44 +1,28 @@
 {
-  "miniprogramRoot": "dist/",
-  "projectname": "coze-mini-program",
-  "description": "test",
-  "appid": "wx1b1f170574b076ad",
   "setting": {
-    "urlCheck": true,
-    "es6": false,
-    "enhance": false,
-    "compileHotReLoad": false,
-    "postcss": false,
-    "minified": false,
-    "compileWorklet": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true,
     "uglifyFileName": false,
-    "uploadWithSourceMap": true,
-    "packNpmManually": false,
+    "enhance": true,
     "packNpmRelationList": [],
-    "minifyWXSS": true,
-    "minifyWXML": true,
-    "localPlugins": false,
-    "disableUseStrict": false,
-    "useCompilerPlugins": false,
-    "condition": false,
-    "swc": false,
-    "disableSWC": true,
     "babelSetting": {
       "ignore": [],
       "disablePlugins": [],
       "outputPath": ""
-    }
+    },
+    "useCompilerPlugins": false,
+    "minifyWXML": true
   },
   "compileType": "miniprogram",
+  "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [
-      {
-        "value": "./assets",
-        "type": "folder"
-      }
-    ],
+    "ignore": [],
     "include": []
   },
-  "simulatorPluginLibVersion": {},
-  "editorSetting": {}
+  "appid": "wx1b1f170574b076ad",
+  "editorSetting": {},
+  "projectname": "xinxiang-ai-bazi",
+  "description": "心象 · AI 八字与东方日签",
+  "miniprogramRoot": "apps/miniapp/dist/"
 }

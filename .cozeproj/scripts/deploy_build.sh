@@ -11,9 +11,10 @@ else
 fi
 echo "Installing dependencies..."
 # 安装所有依赖（包含 Taro 核心和 React）
-pnpm install
+pnpm install --frozen-lockfile
+pnpm install:web
 
 echo "Building the Taro project..."
 pnpm build
 
-echo "Build completed successfully! Assets are in /dist"
+echo "Build completed successfully! Assets are in apps/web/dist and apps/miniapp/dist*"

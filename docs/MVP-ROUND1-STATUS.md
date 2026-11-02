@@ -1,7 +1,9 @@
 # 心象 · 第一轮 MVP 现状交接文档
 
+> 此文是历史快照；当前版本、目录和命令以 [项目首页](../README.md) 与 [迁移说明](repository-layout.md) 为准。
+
 > 更新日期：2026-09-04  
-> 仓库：https://github.com/SherlockMF/cyber-spirit-xuanxue （private）  
+> 仓库：https://github.com/SherlockMF/xinxiang-ai-bazi （可见性以仓库设置为准）
 > 继续开发请拉：`fix/bugfixes-and-ai-bazi-analysis`（含第一轮 MVP 全量；`main` 较旧）  
 > 用途：换电脑继续开发前的状态快照
 
@@ -65,7 +67,7 @@
 - 包管理：**必须用 pnpm**
 - 本地存储：统一 `STORAGE_KEYS`（`xinxiang_*`），含 legacy `cyber_*` 迁移
 
-### 启动命令（在 `projects/` 下）
+### 原启动命令（迁移前记录）
 
 ```bash
 pnpm install
@@ -155,8 +157,8 @@ xinxiang_daily_xiang_history
 1. Clone 并切到 MVP 分支：
 
 ```bash
-git clone https://github.com/SherlockMF/cyber-spirit-xuanxue.git
-cd cyber-spirit-xuanxue
+git clone https://github.com/SherlockMF/xinxiang-ai-bazi.git
+cd xinxiang-ai-bazi
 git checkout fix/bugfixes-and-ai-bazi-analysis
 ```
 

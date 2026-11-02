@@ -45,3 +45,15 @@ key/
 
 .cozeproj/reduction
 node-compile-cache/
+
+# Local tools, generated evidence and migration cache
+.agents/
+output/
+.playwright-cli/
+.swc/
+projects/
+*.tsbuildinfo
+.env.*
+!.env.example
+*.key
+*.pem
